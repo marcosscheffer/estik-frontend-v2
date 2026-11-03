@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { Bell, Monitor, Ticket, UserCheck } from "lucide-react";
+import { Bell, Forward, Inbox, Monitor, Send, Ticket, UserCheck } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
-import { ticketsService } from "@/services/tickets";
+import { ticketsService, type TicketFilters } from "@/services/tickets";
 import { computersService } from "@/services/computers";
 import { notificationsService } from "@/services/notifications";
-import { access } from "@/lib/roles";
+import { access, canForwardTickets, receivesTickets, seesOnlyForwardedTickets } from "@/lib/roles";
 import { accents, type AccentName } from "@/lib/accents";
 import { statusLabel } from "@/lib/labels";
 import { Card, CardGrid, CardHeader } from "@/components/ui";
@@ -58,7 +58,12 @@ function Stat({
 export function DashboardPage() {
   const { claims, can } = useAuth();
   const me = claims!.sub;
-  const isStaff = can(access.assumeTickets);
+  const isStaff = can(access.ticketStaff);
+  const dispatcher = canForwardTickets(claims?.role);
+  const receiver = receivesTickets(claims?.role);
+  // técnico só conta o que foi encaminhado a ele
+  const scopeFilter: TicketFilters = seesOnlyForwardedTickets(claims?.role) ? { forwardedId: me } : {};
+  const scopeQs = scopeFilter.forwardedId ? `&forwardedId=${me}` : "";
 
   const myTickets = useQuery({
     queryKey: ["tickets", "list", { requesterId: me, page: 0, size: 5 }],
@@ -67,12 +72,29 @@ export function DashboardPage() {
   const openTickets = useQuery({
     queryKey: ["tickets", "list", { status: "OPEN", size: 1 }],
     queryFn: () => ticketsService.list({ status: "OPEN", size: 1 }),
-    enabled: isStaff,
+    enabled: dispatcher,
+  });
+  // abertos que ninguém encaminhou ainda (fila do regulador)
+  const unforwarded = useQuery({
+    queryKey: ["tickets", "list", { forwarded: false, status: "OPEN", size: 1 }],
+    queryFn: () => ticketsService.list({ forwarded: false, status: "OPEN", size: 1 }),
+    enabled: dispatcher,
+  });
+  const sent = useQuery({
+    queryKey: ["tickets", "list", { regulatorId: me, size: 1 }],
+    queryFn: () => ticketsService.list({ regulatorId: me, size: 1 }),
+    enabled: dispatcher,
+  });
+  // encaminhados a mim que ainda não assumi (forward volta o chamado para OPEN)
+  const forwarded = useQuery({
+    queryKey: ["tickets", "list", { forwardedId: me, status: "OPEN", size: 1 }],
+    queryFn: () => ticketsService.list({ forwardedId: me, status: "OPEN", size: 1 }),
+    enabled: receiver,
   });
   const assigned = useQuery({
     queryKey: ["tickets", "list", { assigneeId: me, status: "PROGRESS", size: 1 }],
     queryFn: () => ticketsService.list({ assigneeId: me, status: "PROGRESS", size: 1 }),
-    enabled: isStaff,
+    enabled: receiver,
   });
   const computers = useQuery({
     queryKey: ["computers", "list", { size: 1 }],
@@ -81,8 +103,8 @@ export function DashboardPage() {
   });
   const byStatus = useQueries({
     queries: statuses.map((status) => ({
-      queryKey: ["tickets", "list", { status, size: 1 }],
-      queryFn: () => ticketsService.list({ status, size: 1 }),
+      queryKey: ["tickets", "list", { ...scopeFilter, status, size: 1 }],
+      queryFn: () => ticketsService.list({ ...scopeFilter, status, size: 1 }),
       enabled: isStaff,
     })),
   });
@@ -103,9 +125,28 @@ export function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Meus chamados" value={myTickets.data?.totalItems} icon={Ticket} to={`/tickets?requesterId=${me}`} accent="blue" />
-        {isStaff && (
+        {dispatcher && (
           <>
             <Stat label="Chamados abertos" value={openTickets.data?.totalItems} icon={Ticket} to="/tickets?status=OPEN" accent="violet" />
+            <Stat
+              label="Não encaminhados"
+              value={unforwarded.data?.totalItems}
+              icon={Inbox}
+              to="/tickets?forwarded=false&status=OPEN"
+              accent="blue"
+            />
+            <Stat label="Encaminhados por mim" value={sent.data?.totalItems} icon={Forward} to={`/tickets?regulatorId=${me}`} accent="emerald" />
+          </>
+        )}
+        {receiver && (
+          <>
+            <Stat
+              label="Encaminhados a mim"
+              value={forwarded.data?.totalItems}
+              icon={Send}
+              to={`/tickets?forwardedId=${me}&status=OPEN`}
+              accent="teal"
+            />
             <Stat
               label="Atribuídos a mim"
               value={assigned.data?.totalItems}
@@ -128,7 +169,7 @@ export function DashboardPage() {
             {statuses.map((status, i) => (
               <Link
                 key={status}
-                to={`/tickets?status=${status}`}
+                to={`/tickets?status=${status}${scopeQs}`}
                 className="rounded-xl bg-slate-800/50 p-4 ring-1 ring-white/[0.06] transition hover:-translate-y-0.5 hover:bg-slate-800/80 hover:ring-white/15"
               >
                 <p className="flex items-center gap-2 text-sm text-slate-400">
@@ -144,7 +185,7 @@ export function DashboardPage() {
         </section>
       )}
 
-      <TicketsByMonthChart />
+      <TicketsByMonthChart filters={scopeFilter} />
 
       <Card>
         <CardHeader

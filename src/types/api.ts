@@ -3,10 +3,13 @@
 export type UUID = string;
 export type ISODate = string;
 
-export type Role = "USER" | "ARCH" | "IT";
+/** Hierarquia do backend: ADMINISTRATOR > TECHNICIAN > REGULATOR > USER. */
+export type Role = "USER" | "REGULATOR" | "TECHNICIAN" | "ADMINISTRATOR";
+/** Área de atuação do usuário (campo `function`). */
+export type UserFunction = "IT" | "MAINTENANCE" | "USER";
 export type TicketStatus = "OPEN" | "PROGRESS" | "CANCELLED" | "RESOLVED";
 export type TicketPriority = "MILD" | "MODERATE" | "URGENT";
-export type TicketType = "IT" | "ARCH";
+export type TicketType = "IT" | "MAINTENANCE";
 export type OsType = "UBUNTU" | "WINDOWS";
 export type StorageType = "NVME" | "SSD" | "HDD";
 export type Direction = "RECEIVED" | "SENT" | "NONE";
@@ -60,7 +63,7 @@ export interface RegisterRequest {
   email?: string;
   username: string;
   password: string;
-  /** Opcional: a unidade é definida por TI ao ativar a conta. */
+  /** Opcional: a unidade é definida pelo administrador ao ativar a conta. */
   facilityId?: UUID;
 }
 export interface TokenResponse {
@@ -82,8 +85,9 @@ export interface UserResponse {
   id: UUID;
   username: string;
   email?: string;
-  /** Pode vir vazio até TI definir a unidade. */
+  /** Pode vir vazio até o administrador definir a unidade. */
   facilityId?: UUID | null;
+  function: UserFunction;
   role: Role;
   createdAt: ISODate;
   updatedAt: ISODate;
@@ -93,6 +97,7 @@ export interface UserResponseSummary {
   id: UUID;
   username: string;
   email?: string;
+  function: UserFunction;
   role: Role;
   active: boolean;
 }
@@ -209,11 +214,17 @@ export interface TicketSummaryResponse {
   priority: TicketPriority;
   status: TicketStatus;
   createdAt: ISODate;
+  /** O TicketSummaryResponse ainda não traz; opcional para quando trouxer. */
+  forwarded?: TicketUserResponse | null;
 }
 export interface TicketResponse {
   id: UUID;
   facility: RefSummary;
   requester: TicketUserResponse;
+  /** Técnico para quem foi encaminhado (só ele pode assumir). */
+  forwarded?: TicketUserResponse | null;
+  /** Quem encaminhou. */
+  regulator?: TicketUserResponse | null;
   assignee?: TicketUserResponse | null;
   ticketType: TicketType;
   title: string;
@@ -234,6 +245,27 @@ export interface UpdateTicketRequest {
   title: string;
   description: string;
   ticketType: TicketType;
+}
+/* ---------- Ticket chat ---------- */
+/** GET /tickets/{id}/messages (vem do mais novo para o mais antigo) e POST. */
+export interface TicketMessageResponse {
+  id: UUID;
+  author: TicketUserResponse;
+  body: string;
+  createdAt: ISODate;
+}
+/** Evento "ticket_message" do SSE /tickets/{id}/messages/stream (só traz authorId). */
+export interface TicketMessageStreamPayload {
+  id: UUID;
+  ticketId: UUID;
+  authorId: UUID;
+  body: string;
+  createdAt: ISODate;
+}
+
+/** POST /tickets/{id}/forward — userId precisa ser um TECHNICIAN. */
+export interface ForwardTicketRequest {
+  userId: UUID;
   priority: TicketPriority;
 }
 export interface TicketHistoryResponse {
@@ -324,12 +356,33 @@ export interface TransferRequest {
 }
 
 /* ---------- Notifications ---------- */
+/** Tipos gravados pelo TicketEventListener (TICKET_FORWARDED ainda não é emitido). */
+export type NotificationType =
+  | "NEW_TICKET"
+  | "TICKET_FORWARDED"
+  | "TICKET_ASSUMED"
+  | "TICKET_REOPEN"
+  | "TICKET_CANCELLED"
+  | "TICKET_RESOLVED"
+  | "TICKET_MESSAGE";
 export interface NotificationResponse {
   id: UUID;
   title: string;
   message: string;
   read: boolean;
-  type: string;
+  /** O backend manda string livre; os conhecidos estão em NotificationType. */
+  type: NotificationType | (string & {});
+  /** id do chamado relacionado */
+  referencesId?: UUID | null;
+  createdAt: ISODate;
+}
+/** Evento "notification" do SSE /notifications/stream. */
+export interface NotificationStreamPayload {
+  id: UUID;
+  type: NotificationType | (string & {});
+  title: string;
+  message: string;
+  referencesId?: UUID | null;
   createdAt: ISODate;
 }
 export interface UnreadNotificationsResponse {

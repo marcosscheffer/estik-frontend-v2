@@ -61,6 +61,9 @@ export default function App() {
             <Route path="facilities/:id" element={<FacilityDetailPage />} />
             <Route path="departaments" element={<DepartamentsPage />} />
             <Route path="departaments/:id" element={<DepartamentDetailPage />} />
+          </Route>
+
+          <Route element={<RoleRoute role={access.users} />}>
             <Route path="users" element={<UsersPage />} />
             <Route path="users/:id" element={<UserDetailPage />} />
           </Route>

@@ -1,8 +1,10 @@
 import type {
   Direction,
   MovementType,
+  NotificationType,
   OsType,
   Role,
+  UserFunction,
   StorageType,
   TicketPriority,
   TicketStatus,
@@ -13,9 +15,46 @@ export type Tone = "gray" | "blue" | "green" | "amber" | "red" | "violet";
 
 export const roleLabel: Record<Role, string> = {
   USER: "Usuário",
-  ARCH: "Arquitetura",
-  IT: "TI",
+  REGULATOR: "Regulador",
+  TECHNICIAN: "Técnico",
+  ADMINISTRATOR: "Administrador",
 };
+export const roleTone: Record<Role, Tone> = {
+  USER: "gray",
+  REGULATOR: "blue",
+  TECHNICIAN: "amber",
+  ADMINISTRATOR: "violet",
+};
+
+export const functionLabel: Record<UserFunction, string> = {
+  USER: "Usuário",
+  IT: "TI",
+  MAINTENANCE: "Manutenção",
+};
+export const functionTone: Record<UserFunction, Tone> = {
+  USER: "gray",
+  IT: "blue",
+  MAINTENANCE: "green",
+};
+
+/** Tipos de notificação conhecidos; outros aparecem com o texto cru. */
+export const notificationTypeLabel: Record<NotificationType, string> = {
+  NEW_TICKET: "Novo chamado",
+  TICKET_FORWARDED: "Encaminhado",
+  TICKET_ASSUMED: "Assumido",
+  TICKET_REOPEN: "Reaberto",
+  TICKET_CANCELLED: "Cancelado",
+  TICKET_RESOLVED: "Resolvido",
+  TICKET_MESSAGE: "Mensagem",
+};
+export function notificationLabel(type: string): string {
+  return notificationTypeLabel[type as NotificationType] ?? type;
+}
+/** Todos os tipos atuais são de chamado: referencesId é o id do ticket. */
+export function notificationLink(n: { type: string; referencesId?: string | null }): string | undefined {
+  if (!n.referencesId) return undefined;
+  return n.type === "NEW_TICKET" || n.type.startsWith("TICKET_") ? `/tickets/${n.referencesId}` : undefined;
+}
 
 export const statusLabel: Record<TicketStatus, string> = {
   OPEN: "Aberto",
@@ -43,7 +82,7 @@ export const priorityTone: Record<TicketPriority, Tone> = {
 
 export const ticketTypeLabel: Record<TicketType, string> = {
   IT: "TI",
-  ARCH: "Arquitetura",
+  MAINTENANCE: "Manutenção",
 };
 
 export const osLabel: Record<OsType, string> = { WINDOWS: "Windows", UBUNTU: "Ubuntu" };

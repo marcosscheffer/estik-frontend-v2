@@ -28,7 +28,7 @@ export function Forbidden() {
       <ShieldAlert className="size-10 text-slate-600" />
       <h1 className="text-lg font-semibold text-slate-100">Acesso restrito</h1>
       <p className="max-w-sm text-sm text-slate-500">
-        Seu papel não tem permissão para ver esta área. Peça a alguém de TI para ajustar seu acesso.
+        Seu papel não tem permissão para ver esta área. Peça a um administrador para ajustar seu acesso.
       </p>
     </div>
   );

@@ -3,6 +3,8 @@ import type { TokenResponse } from "@/types/api";
 import { isExpiringSoon, tokenStore } from "./tokens";
 
 const baseURL = import.meta.env.VITE_API_URL || "/api";
+/** Usado pelo SSE, que é feito com fetch e não passa pelo axios. */
+export const apiBaseURL = baseURL;
 
 export const api = axios.create({
   baseURL,

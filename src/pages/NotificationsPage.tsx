@@ -1,12 +1,14 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { CheckCheck, ChevronDown } from "lucide-react";
+import { CheckCheck, ChevronDown, ExternalLink } from "lucide-react";
 import clsx from "clsx";
 import { useFilters } from "@/hooks/useFilters";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
 import { notificationsService } from "@/services/notifications";
 import { formatDateTime, formatRelative } from "@/lib/format";
+import { notificationLabel, notificationLink } from "@/lib/labels";
 import { Badge, Button, Card, EmptyState, ErrorState, PageHeader, PageLoader, Pagination } from "@/components/ui";
 import type { NotificationResponse } from "@/types/api";
 
@@ -72,7 +74,7 @@ export function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className={clsx("text-slate-100", n.read ? "font-normal" : "font-semibold")}>{n.title}</p>
-                      {n.type && <Badge>{n.type}</Badge>}
+                      {n.type && <Badge tone={n.type === "TICKET_FORWARDED" ? "violet" : "gray"}>{notificationLabel(n.type)}</Badge>}
                     </div>
                     {!isOpen && <p className="mt-0.5 line-clamp-1 text-sm text-slate-400">{n.message}</p>}
                     {/* grid-rows anima a altura sem medir o conteúdo */}
@@ -90,6 +92,14 @@ export function NotificationsPage() {
                   </div>
                   <ChevronDown className={clsx("mt-1 size-4 shrink-0 text-slate-500 transition-transform", isOpen && "rotate-180")} />
                 </button>
+                {isOpen && notificationLink(n) && (
+                  <Link
+                    to={notificationLink(n)!}
+                    className="mb-4 ml-11 inline-flex items-center gap-1 text-sm font-medium text-brand-400 hover:text-brand-300"
+                  >
+                    <ExternalLink className="size-4" /> Abrir chamado
+                  </Link>
+                )}
               </li>
             );
           })}

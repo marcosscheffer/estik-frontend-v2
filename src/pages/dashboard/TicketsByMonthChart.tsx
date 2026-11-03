@@ -2,7 +2,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Table2, BarChart3 } from "lucide-react";
 import clsx from "clsx";
-import { ticketsService } from "@/services/tickets";
+import { ticketsService, type TicketFilters } from "@/services/tickets";
 import { formatNumber } from "@/lib/format";
 import { Card, CardHeader, EmptyState, ErrorState } from "@/components/ui";
 import type { TicketStatus, TicketSummaryResponse } from "@/types/api";
@@ -39,12 +39,12 @@ function lastMonths(): MonthRow[] {
 }
 
 /** A API não tem filtro de data nem endpoint de estatística: busca as páginas e agrupa aqui. */
-async function fetchTickets() {
+async function fetchTickets(filters: TicketFilters) {
   const items: TicketSummaryResponse[] = [];
   let page = 0;
   let totalPages = 1;
   while (page < totalPages && page < MAX_PAGES) {
-    const res = await ticketsService.list({ page, size: PAGE_SIZE });
+    const res = await ticketsService.list({ ...filters, page, size: PAGE_SIZE });
     items.push(...res.items);
     totalPages = res.totalPages;
     page++;
@@ -190,11 +190,12 @@ function DataTable({ rows }: { rows: MonthRow[] }) {
   );
 }
 
-export function TicketsByMonthChart() {
+/** `filters` restringe o que entra no gráfico (ex.: técnico só vê os encaminhados a ele). */
+export function TicketsByMonthChart({ filters = {} }: { filters?: TicketFilters }) {
   const [asTable, setAsTable] = useState(false);
   const { data, isLoading, error } = useQuery({
-    queryKey: ["tickets", "by-month"],
-    queryFn: fetchTickets,
+    queryKey: ["tickets", "by-month", filters],
+    queryFn: () => fetchTickets(filters),
     staleTime: 60_000,
   });
 

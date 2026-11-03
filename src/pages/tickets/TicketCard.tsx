@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Building2, Clock } from "lucide-react";
+import { Building2, Clock, Send } from "lucide-react";
 import clsx from "clsx";
 import { formatRelative } from "@/lib/format";
 import { priorityLabel, priorityTone, statusLabel, statusTone, ticketTypeLabel } from "@/lib/labels";
@@ -30,6 +30,11 @@ export function TicketCard({ ticket: t }: { ticket: TicketSummaryResponse }) {
         <Badge>{ticketTypeLabel[t.ticketType]}</Badge>
       </div>
       <h3 className="line-clamp-2 font-medium text-slate-100">{t.title}</h3>
+      {t.forwarded && (
+        <p className="inline-flex items-center gap-1 text-xs text-slate-400">
+          <Send className="size-3.5" /> {t.forwarded.username}
+        </p>
+      )}
       <div className="mt-auto flex items-center justify-between gap-3 text-xs text-slate-500">
         <span className="inline-flex min-w-0 items-center gap-1">
           <Building2 className="size-3.5 shrink-0" />

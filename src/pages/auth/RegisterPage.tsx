@@ -47,7 +47,7 @@ export function RegisterPage() {
       <AuthShell title="Conta criada" subtitle="Só falta um passo.">
         <div className="rounded-xl bg-emerald-500/10 p-5 text-sm text-emerald-300 ring-1 ring-emerald-500/30">
           <CheckCircle2 className="mb-2 size-6" />
-          Sua conta começa <strong>inativa</strong>. Peça para alguém de TI ativá-la e definir a sua unidade; depois é só fazer login.
+          Sua conta começa <strong>inativa</strong>. Peça para um administrador ativá-la e definir a sua unidade; depois é só fazer login.
         </div>
         <Link to="/login" className="mt-6 block">
           <Button className="w-full">Ir para o login</Button>
@@ -57,7 +57,7 @@ export function RegisterPage() {
   }
 
   return (
-    <AuthShell title="Criar conta" subtitle="Novos usuários precisam ser ativados por TI.">
+    <AuthShell title="Criar conta" subtitle="Novos usuários precisam ser ativados por um administrador.">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!!error && <ErrorState error={error} />}
         <Input label="Usuário" autoComplete="username" {...register("username")} error={errors.username?.message} />

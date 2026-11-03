@@ -14,8 +14,9 @@ const schema = z.object({
   title: z.string().trim().min(1, "Informe um título"),
   description: z.string().trim(),
   facilityId: z.string().min(1, "Selecione a unidade"),
-  ticketType: z.enum(["IT", "ARCH"]),
-  priority: z.enum(["MILD", "MODERATE", "URGENT"]),
+  ticketType: z.enum(["IT", "MAINTENANCE"]),
+  // opcional porque o select fica desabilitado na edição (e campo desabilitado não envia valor)
+  priority: z.enum(["MILD", "MODERATE", "URGENT"]).optional(),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -54,10 +55,14 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
         ? ticketsService.update(ticket.id, {
             title: data.title,
             description: data.description || data.title,
+            // o update não aceita priority: depois de aberto, só quem encaminha muda
             ticketType: data.ticketType,
-            priority: data.priority,
           })
-        : ticketsService.create({ ...data, description: data.description || undefined }),
+        : ticketsService.create({
+            ...data,
+            description: data.description || undefined,
+            priority: data.priority ?? "MODERATE",
+          }),
     invalidate: [["tickets"]],
     success: editing ? "Chamado atualizado" : "Chamado aberto",
     onSuccess: (t) => {
@@ -93,8 +98,14 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
           {...register("description")}
           error={errors.description?.message}
         />
-        <Select label="Tipo" options={toOptions(ticketTypeLabel)} {...register("ticketType")} />
-        <Select label="Prioridade" options={toOptions(priorityLabel)} {...register("priority")} />
+        <Select label="Área" options={toOptions(ticketTypeLabel)} {...register("ticketType")} />
+        <Select
+          label="Prioridade"
+          options={toOptions(priorityLabel)}
+          disabled={editing}
+          hint={editing ? "A prioridade é ajustada por quem encaminha o chamado." : undefined}
+          {...register("priority")}
+        />
         <FacilitySelect
           label="Unidade"
           className="sm:col-span-2"

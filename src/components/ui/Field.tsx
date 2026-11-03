@@ -70,6 +70,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
 export interface Option {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
@@ -90,7 +91,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         <select id={id} ref={ref} className={clsx(control, "pr-8", error && invalid)} {...rest}>
           {placeholder !== undefined && <option value="">{placeholder}</option>}
           {options.map((o) => (
-            <option key={o.value} value={o.value}>
+            <option key={o.value} value={o.value} disabled={o.disabled}>
               {o.label}
             </option>
           ))}

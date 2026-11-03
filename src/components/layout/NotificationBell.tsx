@@ -1,22 +1,70 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { Bell, CheckCheck, ChevronDown } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bell, CheckCheck, ChevronDown, ExternalLink } from "lucide-react";
 import clsx from "clsx";
+import { toast } from "sonner";
 import { notificationsService } from "@/services/notifications";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
 import { formatDateTime, formatRelative } from "@/lib/format";
+import { notificationLabel, notificationLink } from "@/lib/labels";
+import { streamSse } from "@/lib/sse";
+import type { NotificationStreamPayload, UnreadNotificationsResponse } from "@/types/api";
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  const location = useLocation();
+  const path = useRef(location.pathname);
+  path.current = location.pathname;
+  const [live, setLive] = useState(false);
 
   const { data: unread } = useQuery({
     queryKey: ["notifications", "unread"],
     queryFn: notificationsService.unread,
-    refetchInterval: 30_000,
+    // com o SSE no ar o contador vem por ele; o polling fica só de reserva
+    refetchInterval: live ? false : 30_000,
   });
+
+  // Tempo real: GET /notifications/stream manda "unread-count" ao conectar e
+  // "notification" a cada notificação nova (criação, encaminhamento, mensagem...).
+  useEffect(() => {
+    const ctrl = new AbortController();
+    streamSse("/notifications/stream", {
+      signal: ctrl.signal,
+      onOpen: () => setLive(true),
+      onDisconnect: () => setLive(false),
+      onFatal: () => setLive(false),
+      onEvent: ({ event, data }) => {
+        try {
+          if (event === "unread-count") {
+            qc.setQueryData<UnreadNotificationsResponse>(["notifications", "unread"], JSON.parse(data));
+            return;
+          }
+          if (event !== "notification") return;
+          const n = JSON.parse(data) as NotificationStreamPayload;
+          qc.invalidateQueries({ queryKey: ["notifications"] });
+          // a notificação é de chamado: atualiza listas/detalhe (ex.: "Encaminhados a mim")
+          if (n.referencesId) qc.invalidateQueries({ queryKey: ["tickets"] });
+
+          const to = notificationLink(n);
+          // mensagem do chat que estou vendo agora: o chat já mostra, sem toast
+          if (n.type === "TICKET_MESSAGE" && to && path.current === to) return;
+          toast(n.title, {
+            description: `${notificationLabel(n.type)} · ${n.message}`,
+            action: to ? { label: "Abrir", onClick: () => navigate(to) } : undefined,
+          });
+        } catch {
+          /* evento malformado: ignora */
+        }
+      },
+    }).finally(() => setLive(false));
+    return () => ctrl.abort();
+  }, [qc, navigate]);
 
   const { data: latest } = useQuery({
     queryKey: ["notifications", "list", { page: 0, size: 6 }],
@@ -100,11 +148,20 @@ export function NotificationBell() {
                         {n.message}
                       </span>
                       <span className="mt-1 block text-[11px] text-slate-500" title={formatDateTime(n.createdAt)}>
-                        {isOpen ? formatDateTime(n.createdAt) : formatRelative(n.createdAt)}
+                        {notificationLabel(n.type)} · {isOpen ? formatDateTime(n.createdAt) : formatRelative(n.createdAt)}
                       </span>
                     </span>
                     <ChevronDown className={clsx("mt-0.5 size-3.5 shrink-0 text-slate-500 transition-transform", isOpen && "rotate-180")} />
                   </button>
+                  {isOpen && notificationLink(n) && (
+                    <Link
+                      to={notificationLink(n)!}
+                      onClick={() => setOpen(false)}
+                      className="mb-3 ml-9 inline-flex items-center gap-1 text-xs font-medium text-brand-400 hover:text-brand-300"
+                    >
+                      <ExternalLink className="size-3.5" /> Abrir chamado
+                    </Link>
+                  )}
                 </li>
               );
             })}

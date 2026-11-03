@@ -5,6 +5,7 @@ import type {
   PageResponse,
   Role,
   UpdateUserRequest,
+  UserFunction,
   UserResponse,
   UserResponseSummary,
   UUID,
@@ -13,6 +14,8 @@ import type {
 export interface UserFilters extends PageParams {
   username?: string;
   facilityId?: UUID;
+  role?: Role;
+  function?: UserFunction;
 }
 
 export const usersService = {
@@ -27,6 +30,8 @@ export const usersService = {
   deactivate: (id: UUID) => api.post<UserResponse>(`/users/${id}/deactivate`).then((r) => r.data),
   assign: (id: UUID, role: Role) =>
     api.post<UserResponse>(`/users/${id}/assign`, { role }).then((r) => r.data),
+  changeFunction: (id: UUID, fn: UserFunction) =>
+    api.post<UserResponse>(`/users/${id}/function`, { function: fn }).then((r) => r.data),
   changeFacility: (id: UUID, facilityId: UUID) =>
     api.post<UserResponse>(`/users/${id}/facility`, { facilityId }).then((r) => r.data),
 };

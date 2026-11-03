@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Ban, CheckCircle2, Hand, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Ban, CheckCircle2, Hand, Pencil, RotateCcw, Send, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService, type TicketAction } from "@/services/tickets";
-import { access } from "@/lib/roles";
+import { access, canForwardTickets } from "@/lib/roles";
 import { formatDateTime } from "@/lib/format";
 import { priorityLabel, priorityTone, statusLabel, statusTone, ticketTypeLabel } from "@/lib/labels";
 import {
@@ -20,6 +20,8 @@ import {
   PageLoader,
 } from "@/components/ui";
 import { TicketFormModal } from "./TicketFormModal";
+import { ForwardTicketModal } from "./ForwardTicketModal";
+import { TicketChat } from "./TicketChat";
 
 const actionText: Record<TicketAction, string> = {
   assume: "Chamado assumido",
@@ -34,6 +36,7 @@ export function TicketDetailPage() {
   const { claims, can } = useAuth();
   const me = claims!.sub;
   const [editOpen, setEditOpen] = useState(false);
+  const [forwardOpen, setForwardOpen] = useState(false);
   const [confirm, setConfirm] = useState<null | "cancel" | "delete">(null);
 
   const { data: ticket, isLoading, error } = useQuery({
@@ -65,7 +68,12 @@ export function TicketDetailPage() {
   const isRequester = ticket.requester?.id === me;
   const isAssignee = ticket.assignee?.id === me;
   const closed = ticket.status === "RESOLVED" || ticket.status === "CANCELLED";
-  const canAssume = can(access.assumeTickets) && !ticket.assignee && !closed;
+  const isForwarded = ticket.forwarded?.id === me;
+  // só o técnico encaminhado assume (Ticket.assignTo)
+  const canAssume = isForwarded && !ticket.assignee && !closed;
+  // Ticket.forward aceita OPEN ou PROGRESS; a rota exige REGULATOR
+  // técnico não encaminha (regra só do front; a rota aceita REGULATOR+)
+  const canForward = canForwardTickets(claims?.role) && (ticket.status === "OPEN" || ticket.status === "PROGRESS");
   const canResolve = isAssignee && ticket.status === "PROGRESS";
   const canReopen = isRequester && ticket.status === "RESOLVED";
   const canCancel = isRequester && !closed;
@@ -83,6 +91,11 @@ export function TicketDetailPage() {
             {canAssume && (
               <Button icon={<Hand className="size-4" />} loading={act.isPending && act.variables === "assume"} onClick={() => run("assume")}>
                 Assumir
+              </Button>
+            )}
+            {canForward && (
+              <Button variant="secondary" icon={<Send className="size-4" />} onClick={() => setForwardOpen(true)}>
+                {ticket.forwarded ? "Reencaminhar" : "Encaminhar"}
               </Button>
             )}
             {canResolve && (
@@ -105,7 +118,7 @@ export function TicketDetailPage() {
                 Cancelar chamado
               </Button>
             )}
-            {(isRequester || can("IT")) && (
+            {can(access.deleteTickets) && (
               <Button variant="ghost" icon={<Trash2 className="size-4" />} onClick={() => setConfirm("delete")} aria-label="Excluir" />
             )}
           </>
@@ -127,7 +140,9 @@ export function TicketDetailPage() {
             <DetailList
               items={[
                 { label: "Solicitante", value: ticket.requester?.username },
-                { label: "Responsável", value: ticket.assignee?.username ?? "Ninguém ainda" },
+                { label: "Regulador", value: ticket.regulator?.username ?? "Não encaminhado" },
+                { label: "Encaminhado para", value: ticket.forwarded?.username ?? "Ninguém ainda" },
+                { label: "Responsável", value: ticket.assignee?.username ?? "Ninguém assumiu" },
                 { label: "Unidade", value: ticket.facility && `${ticket.facility.name} (${ticket.facility.code})` },
                 { label: "Aberto em", value: formatDateTime(ticket.createdAt) },
                 { label: "Atualizado em", value: formatDateTime(ticket.updatedAt) },
@@ -156,7 +171,12 @@ export function TicketDetailPage() {
         </Card>
       </div>
 
+      {(isRequester || isAssignee || canForwardTickets(claims?.role)) && (
+        <TicketChat ticket={ticket} me={me} className="mt-6 lg:w-2/3" />
+      )}
+
       <TicketFormModal open={editOpen} onClose={() => setEditOpen(false)} ticket={ticket} />
+      {canForward && <ForwardTicketModal open={forwardOpen} onClose={() => setForwardOpen(false)} ticket={ticket} />}
 
       <ConfirmDialog
         open={confirm === "cancel"}
