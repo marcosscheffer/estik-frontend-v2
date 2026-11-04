@@ -67,7 +67,7 @@ function SimpleForm({ kind, onDone, facilityId: initialFacility = "", departamen
       <ItemSelect label="Item" {...register("itemId")} error={errors.itemId?.message} />
       <Input label={kind === "adjust" ? "Quantidade (novo valor/ajuste)" : "Quantidade"} type="number" min={1} {...register("quantity")} error={errors.quantity?.message} />
       <Textarea label="Observação" rows={2} className="sm:col-span-2" {...register("description")} />
-      <SubmitBar loading={save.isPending} />
+      <SubmitBar loading={save.isPending} onCancel={onDone} />
     </form>
   );
 }
@@ -121,14 +121,15 @@ function TransferForm({ onDone, fromBalance }: { onDone: () => void; fromBalance
         error={errors.quantity?.message}
       />
       <Textarea label="Observação" rows={2} className="sm:col-span-2" {...register("description")} />
-      <SubmitBar loading={save.isPending} />
+      <SubmitBar loading={save.isPending} onCancel={onDone} />
     </form>
   );
 }
 
-function SubmitBar({ loading }: { loading: boolean }) {
+function SubmitBar({ loading, onCancel }: { loading: boolean; onCancel: () => void }) {
   return (
-    <div className="flex justify-end sm:col-span-2">
+    <div className="flex justify-end gap-2 sm:col-span-2">
+      <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
       <Button type="submit" loading={loading}>Registrar</Button>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { functionLabel, functionTone, roleLabel, roleTone } from "@/lib/labels";
+import { roleLabel, roleTone } from "@/lib/labels";
 import { Badge, Tile } from "@/components/ui";
 import type { UserResponseSummary } from "@/types/api";
 
@@ -19,7 +19,6 @@ export function UserCard({ user: u }: { user: UserResponseSummary }) {
       </div>
       <div className="mt-auto flex flex-wrap gap-1.5">
         <Badge tone={roleTone[u.role]}>{roleLabel[u.role]}</Badge>
-        {u.function && u.function !== "USER" && <Badge tone={functionTone[u.function]}>{functionLabel[u.function]}</Badge>}
         <Badge tone={u.active ? "green" : "amber"}>{u.active ? "Ativo" : "Inativo"}</Badge>
       </div>
     </Tile>

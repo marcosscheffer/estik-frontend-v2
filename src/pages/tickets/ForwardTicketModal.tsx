@@ -4,7 +4,7 @@ import { Send } from "lucide-react";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService } from "@/services/tickets";
 import { usersService } from "@/services/users";
-import { functionLabel, priorityLabel, roleLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
+import { priorityLabel, roleLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
 import { Button, Modal, Select } from "@/components/ui";
 import type { TicketPriority, TicketResponse } from "@/types/api";
 
@@ -14,7 +14,7 @@ interface Props {
   ticket: TicketResponse;
 }
 
-/** Escolhe o técnico da área do chamado e ajusta a prioridade (POST /tickets/{id}/forward). */
+/** Escolhe o técnico e ajusta a prioridade (POST /tickets/{id}/forward). */
 export function ForwardTicketModal({ open, onClose, ticket }: Props) {
   const [userId, setUserId] = useState("");
   const [priority, setPriority] = useState<TicketPriority>(ticket.priority);
@@ -25,11 +25,10 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
     setPriority(ticket.priority);
   }, [open, ticket]);
 
-  // Técnicos da área do chamado (function = ticketType) e administradores de
-  // qualquer área. GET /users filtra um papel por vez, então são duas buscas.
+  // Técnicos e administradores. GET /users filtra um papel por vez, então são duas buscas.
   const targets = useQueries({
     queries: [
-      { role: "TECHNICIAN" as const, function: ticket.ticketType, size: 100 },
+      { role: "TECHNICIAN" as const, size: 100 },
       { role: "ADMINISTRATOR" as const, size: 100 },
     ].map((params) => ({
       queryKey: ["users", "list", params],
@@ -52,7 +51,7 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
       const note = isRequester ? " (solicitante)" : !u.active ? " (inativo)" : current ? " (atual)" : "";
       return {
         value: u.id,
-        label: `${u.username} — ${roleLabel[u.role]}${u.function ? ` · ${functionLabel[u.function]}` : ""}${note}`,
+        label: `${u.username} — ${roleLabel[u.role]}${note}`,
         disabled: isRequester || !u.active,
       };
     });
@@ -72,7 +71,7 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
       open={open}
       onClose={onClose}
       title="Encaminhar chamado"
-      description={`Escolha um técnico de ${area} ou um administrador. O chamado fica "Encaminhado" até a pessoa assumir.`}
+      description={`Chamado de ${area}: escolha um técnico ou um administrador. O chamado fica "Encaminhado" até a pessoa assumir.`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>

@@ -9,6 +9,7 @@ export * from "./PageHeader";
 export * from "./Pagination";
 export * from "./SearchInput";
 export * from "./States";
+export * from "./StatusPill";
 export * from "./Table";
 export * from "./Tabs";
 export * from "./Timeline";

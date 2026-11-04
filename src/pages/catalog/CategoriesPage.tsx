@@ -65,8 +65,10 @@ export function CategoriesPage() {
       <PageHeader title="Categorias" description="Agrupam os itens do estoque."
         actions={<><ViewToggle value={view} onChange={setView} /><Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Nova categoria</Button></>} />
       <Card>
-        <div className="border-b border-slate-800 p-4 sm:max-w-sm">
-          <SearchInput value={filters.name} onChange={(v) => setFilter("name", v)} placeholder="Buscar por nome" />
+        <div className="border-b border-slate-800 p-4">
+          <div className="sm:max-w-sm">
+            <SearchInput value={filters.name} onChange={(v) => setFilter("name", v)} placeholder="Buscar por nome" />
+          </div>
         </div>
         {error ? <div className="p-4"><ErrorState error={error} /></div> : view === "grid" ? (
           <CardGrid

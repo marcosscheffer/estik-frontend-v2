@@ -1,12 +1,12 @@
-import type { Role, TicketType, UserFunction } from "@/types/api";
+import type { Role } from "@/types/api";
 
 /**
  * Hierarquia igual à do RoleHierarchy do backend:
- * USER < REGULATOR < TECHNICIAN < ADMINISTRATOR.
+ * USER < TECHNICIAN < ADMINISTRATOR.
  * Quem tem um papel passa em qualquer checagem dos papéis abaixo dele.
  */
-export const ROLES: readonly Role[] = ["USER", "REGULATOR", "TECHNICIAN", "ADMINISTRATOR"];
-const rank: Record<Role, number> = { USER: 1, REGULATOR: 2, TECHNICIAN: 3, ADMINISTRATOR: 4 };
+export const ROLES: readonly Role[] = ["USER", "TECHNICIAN", "ADMINISTRATOR"];
+const rank: Record<Role, number> = { USER: 1, TECHNICIAN: 2, ADMINISTRATOR: 3 };
 
 /** true se `userRole` é `min` ou está acima dele na hierarquia. */
 export function hasRole(userRole: Role | undefined, min: Role): boolean {
@@ -33,11 +33,11 @@ export const access = {
   // escrita em /facilities e /departaments cai no anyRequest -> ADMINISTRATOR
   facilities: "ADMINISTRATOR",
   departaments: "ADMINISTRATOR",
-  // GET /users exige REGULATOR; papel, função, unidade e ativação são ADMINISTRATOR
-  users: "REGULATOR",
+  // GET /users caiu no anyRequest -> ADMINISTRATOR (papel, unidade e ativação também)
+  users: "ADMINISTRATOR",
   manageUsers: "ADMINISTRATOR",
-  // triagem e encaminhamento (POST /tickets/{id}/forward)
-  forwardTickets: "REGULATOR",
+  // triagem e encaminhamento: só administrador encaminha
+  forwardTickets: "ADMINISTRATOR",
   // pode receber encaminhamento, assumir e resolver
   receiveTickets: "TECHNICIAN",
   deleteTickets: "ADMINISTRATOR",
@@ -45,8 +45,3 @@ export const access = {
 
 /** Papéis que podem receber um encaminhamento (o backend valida). */
 export const FORWARD_TARGET_ROLES = ["TECHNICIAN", "ADMINISTRATOR"] as const satisfies readonly Role[];
-
-/** Área de chamado que corresponde à função do usuário (USER não tem área). */
-export function ticketTypeOf(fn: UserFunction | undefined): TicketType | undefined {
-  return fn === "IT" || fn === "MAINTENANCE" ? fn : undefined;
-}

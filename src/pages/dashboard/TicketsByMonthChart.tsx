@@ -15,9 +15,9 @@ const HEIGHT = 280;
 // Mesmos matizes dos badges de status, um passo mais escuro onde precisou para
 // passar no validador de paleta sobre o fundo escuro (slate-900).
 const series = [
-  { status: "OPEN", label: "Aberto", color: "#3b82f6" },
+  { status: "OPEN", label: "Aberto", color: "#94a3b8" },
   { status: "FORWARDED", label: "Encaminhado", color: "#8b5cf6" },
-  { status: "PROGRESS", label: "Em andamento", color: "#d97706" },
+  { status: "PROGRESS", label: "Em andamento", color: "#0ea5e9" },
   { status: "RESOLVED", label: "Resolvido", color: "#059669" },
 ] as const satisfies readonly { status: TicketStatus; label: string; color: string }[];
 

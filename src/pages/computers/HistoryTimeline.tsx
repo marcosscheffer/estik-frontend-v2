@@ -11,13 +11,19 @@ interface Props {
   onRowClick?: (h: ComputerHistorySummaryResponse) => void;
   /** Na página do próprio computador o nome e o link são redundantes. */
   hideComputer?: boolean;
-  empty?: string;
+  /** texto (vira EmptyState) ou um nó pronto */
+  empty?: React.ReactNode;
 }
 
-/**
- * Histórico de serviços em linha do tempo. O resumo da API não traz a data do
- * registro (ela fica no detalhe); o updatedAt que vem é o do computador.
- */
+/** Textos automáticos que o backend grava em inglês. */
+const autoText: Record<string, string> = {
+  Created: "Computador cadastrado",
+  Updated: "Computador atualizado",
+  Moved: "Computador movido",
+};
+const describe = (s: string) => autoText[s?.trim()] ?? s;
+
+/** Histórico de serviços em linha do tempo (data = createdAt do registro). */
 export function HistoryTimeline({ rows, loading, onRowClick, hideComputer, empty }: Props) {
   return (
     <Timeline
@@ -39,21 +45,17 @@ export function HistoryTimeline({ rows, loading, onRowClick, hideComputer, empty
                 <Monitor className="size-4 shrink-0 text-slate-500" />
                 <span className="truncate">{h.computer.name}</span>
               </Link>
-              {h.computer.updatedAt && (
-                <time
-                  className="shrink-0 text-xs text-slate-500"
-                  dateTime={h.computer.updatedAt}
-                  title={formatDateTime(h.computer.updatedAt)}
-                >
-                  computador atualizado {formatRelative(h.computer.updatedAt)}
-                </time>
-              )}
             </div>
           )}
           <div className="flex items-start justify-between gap-4">
-            <p className="min-w-0 text-sm text-slate-300">{h.serviceDescription}</p>
+            <p className="min-w-0 text-sm text-slate-300">{describe(h.serviceDescription)}</p>
             <Badge tone={directionTone[h.direction]}>{directionLabel[h.direction]}</Badge>
           </div>
+          {h.createdAt && (
+            <time className="mt-1 block text-xs text-slate-500" dateTime={h.createdAt} title={formatDateTime(h.createdAt)}>
+              {formatDateTime(h.createdAt)} · {formatRelative(h.createdAt)}
+            </time>
+          )}
         </div>
       )}
     />

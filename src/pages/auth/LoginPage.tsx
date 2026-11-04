@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button, ErrorState, Input } from "@/components/ui";
+import { Button, ErrorState, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "./AuthShell";
 
 const schema = z.object({
@@ -40,10 +40,9 @@ export function LoginPage() {
     <AuthShell title="Entrar" subtitle="Use seu usuário e senha do estik.">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!!error && <ErrorState error={error} />}
-        <Input label="Usuário" autoComplete="username" autoFocus {...register("username")} error={errors.username?.message} />
-        <Input
+        <Input label="Usuário" placeholder="seu.usuario" autoComplete="username" autoFocus {...register("username")} error={errors.username?.message} />
+        <PasswordInput
           label="Senha"
-          type="password"
           autoComplete="current-password"
           {...register("password")}
           error={errors.password?.message}

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Clock, Monitor } from "lucide-react";
+import { Building2, Clock, Monitor, Network } from "lucide-react";
 import { formatRelative } from "@/lib/format";
 import { Tile, TileIcon } from "@/components/ui";
 import type { ComputerSummaryResponse } from "@/types/api";
@@ -12,9 +12,12 @@ export function ComputerCard({ computer: c }: { computer: ComputerSummaryRespons
       <div className="flex items-start gap-3">
         <TileIcon icon={Monitor} />
         <div className="min-w-0">
-          <h3 className="truncate font-medium text-slate-100">{c.name}</h3>
-          <p className="truncate text-sm text-slate-400">
-            {c.facility?.name ?? "—"} · {c.departament?.name ?? "—"}
+          <h3 className="truncate font-medium text-slate-100" title={c.name}>{c.name}</h3>
+          <p className="mt-1 flex items-center gap-1.5 truncate text-xs text-slate-400">
+            <Building2 className="size-3.5 shrink-0 text-slate-500" /> {c.facility?.name ?? "—"}
+          </p>
+          <p className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-slate-400">
+            <Network className="size-3.5 shrink-0 text-slate-500" /> {c.departament?.name ?? "—"}
           </p>
         </div>
       </div>

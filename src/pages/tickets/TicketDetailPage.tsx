@@ -2,22 +2,23 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Hand, Pencil, RotateCcw, Send, Trash2 } from "lucide-react";
+import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService, type TicketAction } from "@/services/tickets";
 import { access } from "@/lib/roles";
-import { formatDateTime } from "@/lib/format";
-import { priorityLabel, priorityTone, statusLabel, statusTone, ticketTypeLabel } from "@/lib/labels";
+import { formatDateTime, formatRelative } from "@/lib/format";
+import { priorityLabel, priorityTone, ticketTypeLabel } from "@/lib/labels";
 import {
   Badge,
   Button,
   Card,
   CardHeader,
   ConfirmDialog,
-  DetailList,
   ErrorState,
   PageHeader,
   PageLoader,
+  StatusPill,
 } from "@/components/ui";
 import { TicketFormModal } from "./TicketFormModal";
 import { ForwardTicketModal } from "./ForwardTicketModal";
@@ -71,7 +72,7 @@ export function TicketDetailPage() {
   const isForwarded = ticket.forwarded?.id === me;
   // Ticket.assignTo: só quem recebeu o encaminhamento, não o solicitante, sem responsável ainda
   const canAssume = isForwarded && !isRequester && !ticket.assignee && ticket.status === "FORWARDED";
-  // Ticket.forward aceita OPEN ou FORWARDED; a rota exige REGULATOR+
+  // Ticket.forward aceita OPEN ou FORWARDED; só ADMINISTRATOR encaminha
   const canForward = can(access.forwardTickets) && (ticket.status === "OPEN" || ticket.status === "FORWARDED");
   const canResolve = isAssignee && ticket.status === "PROGRESS";
   const canReopen = isRequester && ticket.status === "RESOLVED";
@@ -124,53 +125,97 @@ export function TicketDetailPage() {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader title="Detalhes" />
-          <div className="flex flex-wrap gap-2 px-5 pt-4">
-            <Badge tone={statusTone[ticket.status]}>{statusLabel[ticket.status]}</Badge>
-            <Badge tone={priorityTone[ticket.priority]}>{priorityLabel[ticket.priority]}</Badge>
-            <Badge>{ticketTypeLabel[ticket.ticketType]}</Badge>
+      {/* desktop: detalhes + histórico à esquerda, conversa fixa à direita; celular: detalhes, conversa, histórico */}
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        <div className="contents lg:block lg:space-y-6">
+        <Card>
+          <div className="space-y-4 px-5 py-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <StatusPill status={ticket.status} size="md" />
+              <span className="h-5 w-px bg-slate-800" aria-hidden />
+              <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                Prioridade <Badge tone={priorityTone[ticket.priority]}>{priorityLabel[ticket.priority]}</Badge>
+              </span>
+              <span className="flex items-center gap-1.5 text-xs text-slate-500">
+                Área <Badge>{ticketTypeLabel[ticket.ticketType]}</Badge>
+              </span>
+            </div>
+            <div>
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Descrição</h3>
+              <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-200">
+                {ticket.description || <span className="text-slate-500">Sem descrição</span>}
+              </p>
+            </div>
           </div>
-          <div className="whitespace-pre-wrap px-5 py-4 text-sm leading-relaxed text-slate-300">
-            {ticket.description || <span className="text-slate-400">Sem descrição.</span>}
+
+          {/* pessoas envolvidas, na ordem do fluxo */}
+          <div className="border-t border-slate-800 px-5 py-4">
+            <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              {[
+                { role: "Solicitante", user: ticket.requester, empty: "—" },
+                { role: "Encaminhado por", user: ticket.regulator, empty: "—" },
+                { role: "Encaminhado para", user: ticket.forwarded, empty: "—" },
+                { role: "Responsável", user: ticket.assignee, empty: "—" },
+              ].map(({ role, user, empty }) => (
+                <div key={role} className="min-w-0">
+                  <dt className="text-xs text-slate-500">{role}</dt>
+                  <dd className={clsx("mt-0.5 flex items-center gap-2 text-sm", user ? "text-slate-100" : "text-slate-500")}>
+                    <span className="truncate">{user ? user.username : empty}</span>
+                    {user?.id === me && (
+                      <span className="shrink-0 text-xs text-slate-500">(você)</span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           </div>
-          <div className="border-t border-slate-800">
-            <DetailList
-              items={[
-                { label: "Solicitante", value: ticket.requester?.username },
-                { label: "Regulador", value: ticket.regulator?.username ?? "Não encaminhado" },
-                { label: "Encaminhado para", value: ticket.forwarded?.username ?? "Ninguém ainda" },
-                { label: "Responsável", value: ticket.assignee?.username ?? "Ninguém assumiu" },
-                { label: "Unidade", value: ticket.facility && `${ticket.facility.name} (${ticket.facility.code})` },
-                { label: "Aberto em", value: formatDateTime(ticket.createdAt) },
-                { label: "Atualizado em", value: formatDateTime(ticket.updatedAt) },
-              ]}
-            />
-          </div>
+
+          <dl className="grid gap-x-6 gap-y-3 border-t border-slate-800 px-5 py-4 sm:grid-cols-3">
+            {[
+              { label: "Unidade", value: ticket.facility ? `${ticket.facility.name} (${ticket.facility.code})` : "—" },
+              { label: "Aberto em", value: formatDateTime(ticket.createdAt) },
+              { label: "Atualizado", value: formatRelative(ticket.updatedAt), title: formatDateTime(ticket.updatedAt) },
+            ].map(({ label, value, title }) => (
+              <div key={label} className="min-w-0">
+                <dt className="text-xs text-slate-500">{label}</dt>
+                <dd className="mt-0.5 truncate text-sm text-slate-100" title={title}>{value}</dd>
+              </div>
+            ))}
+          </dl>
         </Card>
 
-        <Card>
+        <Card className="order-3 lg:order-none">
           <CardHeader title="Histórico" />
-          <ol className="space-y-4 px-5 py-4">
+          <div className="px-5 py-4">
             {history.data?.items.length === 0 && <p className="text-sm text-slate-500">Sem histórico ainda.</p>}
             {history.error && <ErrorState error={history.error} />}
-            {history.data?.items.map((h) => (
-              <li key={h.id} className="relative flex gap-3 pl-1">
-                <span className="mt-1.5 size-2 shrink-0 rounded-full bg-brand-500 ring-4 ring-brand-500/20" />
-                <div>
-                  <Badge tone={statusTone[h.status]}>{statusLabel[h.status]}</Badge>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {ticketTypeLabel[h.type]} · {formatDateTime(h.createdAt)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ol>
+            <ol className="relative">
+              {history.data?.items.map((h, i, all) => (
+                <li key={h.id} className="relative flex gap-4 pb-5 last:pb-0">
+                  {/* linha ligando os eventos */}
+                  {i < all.length - 1 && <span className="absolute left-[7px] top-5 h-full w-px bg-slate-800" aria-hidden />}
+                  <span className="relative mt-1.5 size-[15px] shrink-0 rounded-full border-2 border-slate-900 bg-slate-600 ring-1 ring-slate-700" />
+                  <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                    <StatusPill status={h.status} />
+                    <span className="text-xs text-slate-500" title={formatDateTime(h.createdAt)}>
+                      {formatDateTime(h.createdAt)}
+                    </span>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
         </Card>
-      </div>
+        </div>
 
-      <TicketChat ticket={ticket} me={me} className="mt-6 lg:w-2/3" />
+        <TicketChat
+          ticket={ticket}
+          me={me}
+          fill
+          events={history.data?.items}
+          className="order-2 h-[70vh] min-h-[420px] lg:sticky lg:top-20 lg:h-[calc(100vh-7.5rem)] lg:min-h-[520px]"
+        />
+      </div>
 
       <TicketFormModal open={editOpen} onClose={() => setEditOpen(false)} ticket={ticket} />
       {canForward && <ForwardTicketModal open={forwardOpen} onClose={() => setForwardOpen(false)} ticket={ticket} />}

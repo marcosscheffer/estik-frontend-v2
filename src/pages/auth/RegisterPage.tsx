@@ -6,7 +6,7 @@ import { z } from "zod";
 import { CheckCircle2 } from "lucide-react";
 import { authService } from "@/services/auth";
 import { getFieldErrors } from "@/lib/errors";
-import { Button, ErrorState, Input } from "@/components/ui";
+import { Button, ErrorState, Input, PasswordInput } from "@/components/ui";
 import { AuthShell } from "./AuthShell";
 
 const schema = z
@@ -63,8 +63,8 @@ export function RegisterPage() {
         {!!error && <ErrorState error={error} />}
         <Input label="Usuário" autoComplete="username" {...register("username")} error={errors.username?.message} />
         <Input label="E-mail (opcional)" type="email" {...register("email")} error={errors.email?.message} />
-        <Input label="Senha" type="password" autoComplete="new-password" {...register("password")} error={errors.password?.message} />
-        <Input label="Confirmar senha" type="password" autoComplete="new-password" {...register("confirm")} error={errors.confirm?.message} />
+        <PasswordInput label="Senha" autoComplete="new-password" {...register("password")} error={errors.password?.message} />
+        <PasswordInput label="Confirmar senha" autoComplete="new-password" {...register("confirm")} error={errors.confirm?.message} />
         <Button type="submit" className="w-full" loading={isSubmitting}>
           Criar conta
         </Button>

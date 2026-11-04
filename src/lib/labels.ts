@@ -1,57 +1,37 @@
 import type {
   Direction,
   MovementType,
-  NotificationType,
   OsType,
   Role,
-  UserFunction,
   StorageType,
   TicketPriority,
   TicketStatus,
   TicketType,
 } from "@/types/api";
+import { describeNotification, notificationRefId, type NotificationRef } from "@/lib/notifications";
 
 export type Tone = "gray" | "blue" | "green" | "amber" | "red" | "violet";
 
 export const roleLabel: Record<Role, string> = {
   USER: "Usuário",
-  REGULATOR: "Regulador",
   TECHNICIAN: "Técnico",
   ADMINISTRATOR: "Administrador",
 };
 export const roleTone: Record<Role, Tone> = {
   USER: "gray",
-  REGULATOR: "blue",
   TECHNICIAN: "amber",
   ADMINISTRATOR: "violet",
 };
 
-export const functionLabel: Record<UserFunction, string> = {
-  USER: "Usuário",
-  IT: "TI",
-  MAINTENANCE: "Manutenção",
-};
-export const functionTone: Record<UserFunction, Tone> = {
-  USER: "gray",
-  IT: "blue",
-  MAINTENANCE: "green",
-};
-
-/** Tipos de notificação conhecidos; outros aparecem com o texto cru. */
-export const notificationTypeLabel: Record<NotificationType, string> = {
-  NEW_TICKET: "Novo chamado",
-  TICKET_ASSUMED: "Assumido",
-  TICKET_REOPEN: "Reaberto",
-  TICKET_CANCELLED: "Cancelado",
-  TICKET_RESOLVED: "Resolvido",
-};
+/** Rótulo curto do tipo de notificação (textos completos em lib/notifications.ts). */
 export function notificationLabel(type: string): string {
-  return notificationTypeLabel[type as NotificationType] ?? type;
+  return describeNotification({ type }).label;
 }
-/** Todos os tipos atuais são de chamado: referencesId é o id do ticket. */
-export function notificationLink(n: { type: string; referencesId?: string | null }): string | undefined {
-  if (!n.referencesId) return undefined;
-  return n.type === "NEW_TICKET" || n.type.startsWith("TICKET_") ? `/tickets/${n.referencesId}` : undefined;
+/** Todos os tipos atuais são de chamado: referenceId é o id do ticket. */
+export function notificationLink(n: NotificationRef): string | undefined {
+  const id = notificationRefId(n);
+  if (!id) return undefined;
+  return n.type === "NEW_TICKET" || n.type.startsWith("TICKET_") ? `/tickets/${id}` : undefined;
 }
 
 export const statusLabel: Record<TicketStatus, string> = {
@@ -62,11 +42,11 @@ export const statusLabel: Record<TicketStatus, string> = {
   CANCELLED: "Cancelado",
 };
 export const statusTone: Record<TicketStatus, Tone> = {
-  OPEN: "blue",
+  OPEN: "gray",
   FORWARDED: "violet",
-  PROGRESS: "amber",
+  PROGRESS: "blue",
   RESOLVED: "green",
-  CANCELLED: "gray",
+  CANCELLED: "red",
 };
 
 export const priorityLabel: Record<TicketPriority, string> = {

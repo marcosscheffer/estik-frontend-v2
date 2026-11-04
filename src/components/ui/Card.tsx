@@ -39,8 +39,8 @@ export function DetailList({ items }: { items: { label: string; value: React.Rea
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 px-5 py-4 sm:grid-cols-2">
       {items.map((it) => (
         <div key={it.label}>
-          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{it.label}</dt>
-          <dd className="mt-1 text-sm text-slate-100">{it.value ?? "—"}</dd>
+          <dt className="text-xs text-slate-500">{it.label}</dt>
+          <dd className="mt-0.5 text-sm text-slate-100">{it.value ?? "—"}</dd>
         </div>
       ))}
     </dl>
