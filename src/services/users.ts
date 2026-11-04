@@ -3,6 +3,7 @@ import { cleanParams } from "@/lib/format";
 import type {
   PageParams,
   PageResponse,
+  PageResult,
   Role,
   UpdateUserRequest,
   UserFunction,
@@ -19,10 +20,11 @@ export interface UserFilters extends PageParams {
 }
 
 export const usersService = {
-  list: (params: UserFilters) =>
+  /** GET /users devolve { content, ... }; aqui vira { items, ... } como o resto da API. */
+  list: (params: UserFilters): Promise<PageResult<UserResponseSummary>> =>
     api
       .get<PageResponse<UserResponseSummary>>("/users", { params: cleanParams(params) })
-      .then((r) => r.data),
+      .then(({ data: { content, ...rest } }) => ({ ...rest, items: content ?? [] })),
   get: (id: UUID) => api.get<UserResponse>(`/users/${id}`).then((r) => r.data),
   update: (id: UUID, body: UpdateUserRequest) =>
     api.put<UserResponse>(`/users/${id}`, body).then((r) => r.data),

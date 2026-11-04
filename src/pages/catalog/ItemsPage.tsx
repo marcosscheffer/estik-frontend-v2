@@ -62,7 +62,7 @@ function ItemModal({ open, onClose, id }: { open: boolean; onClose: () => void; 
 }
 
 export function ItemsPage() {
-  const { filters, page, setFilter, setPage } = useFilters({ name: "", code: "", categoryId: "" });
+  const { filters, page, setFilter, setPage } = useFilters({ name: "", categoryId: "" });
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [view, setView] = useViewMode("items");
 
@@ -78,9 +78,9 @@ export function ItemsPage() {
       <PageHeader title="Itens" description="Catálogo de materiais controlados no estoque."
         actions={<><ViewToggle value={view} onChange={setView} /><Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Novo item</Button></>} />
       <Card>
-        <div className="grid gap-3 border-b border-slate-800 p-4 sm:grid-cols-3">
+        {/* sem filtro por SKU: o parâmetro `code` quebra no backend */}
+        <div className="grid gap-3 border-b border-slate-800 p-4 sm:grid-cols-2">
           <SearchInput value={filters.name} onChange={(v) => setFilter("name", v)} placeholder="Buscar por nome" />
-          <SearchInput value={filters.code} onChange={(v) => setFilter("code", v)} placeholder="Buscar por SKU" />
           <CategorySelect placeholder="Todas as categorias" value={filters.categoryId} onChange={(e) => setFilter("categoryId", e.target.value)} />
         </div>
         {error ? <div className="p-4"><ErrorState error={error} /></div> : view === "grid" ? (

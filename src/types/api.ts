@@ -7,7 +7,7 @@ export type ISODate = string;
 export type Role = "USER" | "REGULATOR" | "TECHNICIAN" | "ADMINISTRATOR";
 /** Área de atuação do usuário (campo `function`). */
 export type UserFunction = "IT" | "MAINTENANCE" | "USER";
-export type TicketStatus = "OPEN" | "PROGRESS" | "CANCELLED" | "RESOLVED";
+export type TicketStatus = "OPEN" | "FORWARDED" | "PROGRESS" | "CANCELLED" | "RESOLVED";
 export type TicketPriority = "MILD" | "MODERATE" | "URGENT";
 export type TicketType = "IT" | "MAINTENANCE";
 export type OsType = "UBUNTU" | "WINDOWS";
@@ -24,7 +24,7 @@ export interface PageResult<T> {
   totalPages: number;
 }
 
-/** /users usa PageResponse, com "content" em vez de "items". */
+/** /users usa PageResponse, com "content" em vez de "items" (o service normaliza para PageResult). */
 export interface PageResponse<T> {
   content: T[];
   page: number;
@@ -214,11 +214,11 @@ export interface TicketSummaryResponse {
   priority: TicketPriority;
   status: TicketStatus;
   createdAt: ISODate;
-  /** O TicketSummaryResponse ainda não traz; opcional para quando trouxer. */
-  forwarded?: TicketUserResponse | null;
 }
 export interface TicketResponse {
   id: UUID;
+  /** Chat criado quando o técnico assume; null até lá. */
+  chatId?: UUID | null;
   facility: RefSummary;
   requester: TicketUserResponse;
   /** Técnico para quem foi encaminhado (só ele pode assumir). */
@@ -246,24 +246,7 @@ export interface UpdateTicketRequest {
   description: string;
   ticketType: TicketType;
 }
-/* ---------- Ticket chat ---------- */
-/** GET /tickets/{id}/messages (vem do mais novo para o mais antigo) e POST. */
-export interface TicketMessageResponse {
-  id: UUID;
-  author: TicketUserResponse;
-  body: string;
-  createdAt: ISODate;
-}
-/** Evento "ticket_message" do SSE /tickets/{id}/messages/stream (só traz authorId). */
-export interface TicketMessageStreamPayload {
-  id: UUID;
-  ticketId: UUID;
-  authorId: UUID;
-  body: string;
-  createdAt: ISODate;
-}
-
-/** POST /tickets/{id}/forward — userId precisa ser um TECHNICIAN. */
+/** POST /tickets/{id}/forward — userId precisa ser TECHNICIAN ou ADMINISTRATOR (e não o solicitante). */
 export interface ForwardTicketRequest {
   userId: UUID;
   priority: TicketPriority;
@@ -273,6 +256,53 @@ export interface TicketHistoryResponse {
   status: TicketStatus;
   type: TicketType;
   createdAt: ISODate;
+}
+
+/* ---------- Chat ---------- */
+export interface ChatUserResponse {
+  id: UUID;
+  username: string;
+  email?: string;
+}
+/** Participante do chat: `id` é o id do participante, o usuário está em `userId`. */
+export interface ChatParticipantResponse {
+  id: UUID;
+  userId: ChatUserResponse;
+  joinedAt?: ISODate;
+}
+export interface ChatFileResponse {
+  id: UUID;
+  /** Relativo à API ("/files/{id}?expires=..&signature=.."), público e válido por 1h. */
+  fileUrl: string;
+  fileType: string;
+}
+export interface ChatAttachmentResponse {
+  id: UUID;
+  file: ChatFileResponse;
+}
+export interface ChatReplyResponse {
+  id: UUID;
+  content: string;
+  createdAt: ISODate;
+  updatedAt?: ISODate;
+}
+/** GET/POST /chats/{chatId}/messages (a lista vem sem ordem garantida). */
+export interface MessageResponse {
+  id: UUID;
+  sender: ChatParticipantResponse;
+  attachments?: ChatAttachmentResponse[] | null;
+  replyTo?: ChatReplyResponse | null;
+  content: string;
+  createdAt: ISODate;
+  updatedAt?: ISODate;
+}
+/** Evento "message" do SSE /chats/{chatId}/stream. */
+export interface ChatStreamPayload extends MessageResponse {
+  chatId: UUID;
+}
+export interface SendMessageRequest {
+  content: string;
+  replyToId?: UUID;
 }
 
 /* ---------- Categories ---------- */
@@ -356,15 +386,13 @@ export interface TransferRequest {
 }
 
 /* ---------- Notifications ---------- */
-/** Tipos gravados pelo TicketEventListener (TICKET_FORWARDED ainda não é emitido). */
+/** Tipos gravados pelo TicketEventListener (encaminhar ainda não notifica). */
 export type NotificationType =
   | "NEW_TICKET"
-  | "TICKET_FORWARDED"
   | "TICKET_ASSUMED"
   | "TICKET_REOPEN"
   | "TICKET_CANCELLED"
-  | "TICKET_RESOLVED"
-  | "TICKET_MESSAGE";
+  | "TICKET_RESOLVED";
 export interface NotificationResponse {
   id: UUID;
   title: string;

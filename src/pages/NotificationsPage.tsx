@@ -74,7 +74,7 @@ export function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className={clsx("text-slate-100", n.read ? "font-normal" : "font-semibold")}>{n.title}</p>
-                      {n.type && <Badge tone={n.type === "TICKET_FORWARDED" ? "violet" : "gray"}>{notificationLabel(n.type)}</Badge>}
+                      {n.type && <Badge tone="gray">{notificationLabel(n.type)}</Badge>}
                     </div>
                     {!isOpen && <p className="mt-0.5 line-clamp-1 text-sm text-slate-400">{n.message}</p>}
                     {/* grid-rows anima a altura sem medir o conteúdo */}

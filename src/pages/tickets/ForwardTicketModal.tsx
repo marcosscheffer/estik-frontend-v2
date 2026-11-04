@@ -25,32 +25,35 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
     setPriority(ticket.priority);
   }, [open, ticket]);
 
-  // Técnicos e administradores de qualquer área (GET /users filtra um papel por vez).
-  // Obs.: hoje o ForwardTicketUseCase só aceita role TECHNICIAN; administrador volta erro.
+  // Técnicos da área do chamado (function = ticketType) e administradores de
+  // qualquer área. GET /users filtra um papel por vez, então são duas buscas.
   const targets = useQueries({
-    queries: (["TECHNICIAN", "ADMINISTRATOR"] as const).map((role) => {
-      const params = { role, size: 100 };
-      return {
-        queryKey: ["users", "list", params],
-        queryFn: () => usersService.list(params),
-        enabled: open,
-      };
-    }),
+    queries: [
+      { role: "TECHNICIAN" as const, function: ticket.ticketType, size: 100 },
+      { role: "ADMINISTRATOR" as const, size: 100 },
+    ].map((params) => ({
+      queryKey: ["users", "list", params],
+      queryFn: () => usersService.list(params),
+      enabled: open,
+    })),
   });
   const loading = targets.some((q) => q.isLoading);
   const loadError = targets.some((q) => q.error);
+  const seen = new Set<string>();
   const options = targets
-    .flatMap((q) => q.data?.content ?? [])
-    // primeiro quem é da área do chamado
-    .sort((a, b) => Number(b.function === ticket.ticketType) - Number(a.function === ticket.ticketType) || a.username.localeCompare(b.username))
+    .flatMap((q) => q.data?.items ?? [])
+    .filter((u) => !seen.has(u.id) && !!seen.add(u.id))
+    // técnicos primeiro, depois administradores
+    .sort((a, b) => Number(a.role === "ADMINISTRATOR") - Number(b.role === "ADMINISTRATOR") || a.username.localeCompare(b.username))
     .map((u) => {
-      // quem já recebeu ou está inativo aparece, mas não dá para escolher
-      const already = u.id === ticket.forwarded?.id;
-      const note = already ? " (já recebeu)" : !u.active ? " (inativo)" : "";
+      // o solicitante e quem está inativo aparecem, mas não dá para escolher
+      const isRequester = u.id === ticket.requester?.id;
+      const current = u.id === ticket.forwarded?.id;
+      const note = isRequester ? " (solicitante)" : !u.active ? " (inativo)" : current ? " (atual)" : "";
       return {
         value: u.id,
         label: `${u.username} — ${roleLabel[u.role]}${u.function ? ` · ${functionLabel[u.function]}` : ""}${note}`,
-        disabled: already || !u.active,
+        disabled: isRequester || !u.active,
       };
     });
   const available = options.filter((o) => !o.disabled).length;
@@ -69,7 +72,7 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
       open={open}
       onClose={onClose}
       title="Encaminhar chamado"
-      description={`Escolha um técnico ou administrador (os de ${area} aparecem primeiro). O chamado volta para "Aberto" até a pessoa assumir.`}
+      description={`Escolha um técnico de ${area} ou um administrador. O chamado fica "Encaminhado" até a pessoa assumir.`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -89,7 +92,7 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           error={loadError ? "Não foi possível carregar a lista." : undefined}
-          hint={ticket.forwarded ? `${ticket.forwarded.username} já recebeu este chamado e não pode ser escolhido de novo.` : undefined}
+          hint={ticket.forwarded ? `Hoje está com ${ticket.forwarded.username}. Reencaminhar troca o responsável.` : undefined}
         />
         <Select
           label="Prioridade"

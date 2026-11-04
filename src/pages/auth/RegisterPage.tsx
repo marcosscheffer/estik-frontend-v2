@@ -47,7 +47,8 @@ export function RegisterPage() {
       <AuthShell title="Conta criada" subtitle="Só falta um passo.">
         <div className="rounded-xl bg-emerald-500/10 p-5 text-sm text-emerald-300 ring-1 ring-emerald-500/30">
           <CheckCircle2 className="mb-2 size-6" />
-          Sua conta começa <strong>inativa</strong>. Peça para um administrador ativá-la e definir a sua unidade; depois é só fazer login.
+          Sua conta foi criada e está <strong>inativa</strong>: aguarde ativação por um administrador (ele também define sua
+          unidade e área). Depois é só fazer login.
         </div>
         <Link to="/login" className="mt-6 block">
           <Button className="w-full">Ir para o login</Button>

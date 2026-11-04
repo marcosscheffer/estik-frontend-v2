@@ -40,12 +40,10 @@ export const functionTone: Record<UserFunction, Tone> = {
 /** Tipos de notificação conhecidos; outros aparecem com o texto cru. */
 export const notificationTypeLabel: Record<NotificationType, string> = {
   NEW_TICKET: "Novo chamado",
-  TICKET_FORWARDED: "Encaminhado",
   TICKET_ASSUMED: "Assumido",
   TICKET_REOPEN: "Reaberto",
   TICKET_CANCELLED: "Cancelado",
   TICKET_RESOLVED: "Resolvido",
-  TICKET_MESSAGE: "Mensagem",
 };
 export function notificationLabel(type: string): string {
   return notificationTypeLabel[type as NotificationType] ?? type;
@@ -58,12 +56,14 @@ export function notificationLink(n: { type: string; referencesId?: string | null
 
 export const statusLabel: Record<TicketStatus, string> = {
   OPEN: "Aberto",
+  FORWARDED: "Encaminhado",
   PROGRESS: "Em andamento",
   RESOLVED: "Resolvido",
   CANCELLED: "Cancelado",
 };
 export const statusTone: Record<TicketStatus, Tone> = {
   OPEN: "blue",
+  FORWARDED: "violet",
   PROGRESS: "amber",
   RESOLVED: "green",
   CANCELLED: "gray",

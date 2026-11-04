@@ -40,7 +40,7 @@ src/
 ├── lib/
 │   ├── api.ts              instância axios + refresh automático do token
 │   ├── tokens.ts           guarda access/refresh no localStorage e decodifica o JWT
-│   ├── roles.ts            hierarquia IT > ARCH > USER e quem vê cada área
+│   ├── roles.ts            hierarquia USER < REGULATOR < TECHNICIAN < ADMINISTRATOR e quem vê cada área
 │   ├── errors.ts           transforma o ErrorResponse do backend em mensagem
 │   ├── labels.ts           textos em português dos enums
 │   └── format.ts           datas, números, limpeza de query params
@@ -81,11 +81,32 @@ src/
 | Área | Papel mínimo |
 |---|---|
 | Chamados, notificações, perfil | USER |
-| Computadores, histórico, estoque, itens, categorias, assumir chamados | ARCH |
-| Unidades, departamentos, usuários | IT |
+| Lista de usuários, triagem e encaminhamento de chamados | REGULATOR |
+| Computadores, histórico, estoque, itens, categorias, receber/assumir chamados | TECHNICIAN |
+| Unidades, departamentos, papel/função/unidade/ativação de usuários | ADMINISTRATOR |
 
 Se as regras do `SecurityConfig` forem diferentes, ajuste esse arquivo.
 
 ## Cadastro de usuário
 
-O cadastro pede só usuário, e-mail (opcional) e senha. A conta nasce inativa e sem unidade; quem é de TI escolhe a unidade ao ativar, na página do usuário (`POST /users/{id}/facility` e depois `POST /users/{id}/activate`).
+O cadastro pede só usuário, e-mail (opcional) e senha. A conta nasce inativa e sem unidade; um administrador escolhe a unidade ao ativar, na página do usuário (`POST /users/{id}/facility` e depois `POST /users/{id}/activate`).
+
+## Sincronização com o backend (04/11)
+
+Ajustes feitos para o front bater com o estado atual do `estik-java-api`:
+
+- **Status `FORWARDED` ("Encaminhado")**: novo status nos tipos, badges, dashboard e gráfico. Fluxo: Aberto → Encaminhado → Em andamento → Resolvido (reabrir volta para Em andamento); o solicitante cancela em qualquer status menos Resolvido/Cancelado.
+- **Encaminhar**: o modal lista técnicos da área do chamado (`GET /users?role=TECHNICIAN&function=<área>`) e administradores; o solicitante e contas inativas não podem ser escolhidos. Só aparece para REGULATOR+ e com o chamado Aberto ou Encaminhado. "Assumir" só aparece para quem recebeu o encaminhamento, com o chamado Encaminhado.
+- **Abas de chamados**: Todos, Meus chamados, Para triagem (abertos, filtrados pela área da minha função), Encaminhados pra mim, Em atendimento por mim e Encaminhados por mim. A aba fica na URL (`?scope=`).
+- **Chat novo (`/chats/{chatId}`)**: substitui o antigo `/tickets/{id}/messages`. Abre quando o técnico assume (`ticket.chatId`), só solicitante e responsável participam e fica só leitura com o chamado resolvido/cancelado. Tem tempo real por SSE, respostas (citação), anexos (PNG/JPEG/WEBP/PDF, 10 MB cada, 30 MB no total) com miniatura e visualização ampliada. As URLs dos anexos expiram em 1h: o chat busca de novo a cada 50 min ou quando uma imagem falha.
+- **Papéis**: `src/lib/roles.ts` usa só a hierarquia USER < REGULATOR < TECHNICIAN < ADMINISTRATOR (`hasRole(papel, mínimo)`); as regras antigas só do front para técnico/regulador foram removidas.
+- **Auth**: o refresh automático também roda com 403 sem corpo (é assim que o backend responde a token vencido). Mensagens em português para conta inativa, usuário não encontrado e senha errada; o cadastro avisa para aguardar ativação por um administrador.
+- **Services**: `GET /users` é normalizado de `content` para `items`; a busca de itens não manda mais `code` e a de chamados não manda mais `forwarded` (os dois quebram no backend). O axios não fixa mais `Content-Type`, para o multipart do chat funcionar.
+- **Erros**: 409 em chamado mostra "o chamado foi alterado, recarregue"; 409 ao mudar o próprio papel/função/status também tem mensagem própria.
+
+Pendências no backend que limitam a tela:
+
+- `GET /chats/{id}` (participantes) só libera ADMINISTRATOR (o matcher é `/chat/{id}`, sem "s"); o front tira os participantes do próprio chamado.
+- O matcher `"/stock/"` não cobre `/stock/movements/**`, então movimentar estoque só funciona para ADMINISTRATOR (o front libera para TECHNICIAN e mostra um aviso no 403).
+- Encaminhar não gera notificação para o técnico.
+- `GET /chats/{id}/messages` não ordena; o front carrega todas as páginas e ordena por `createdAt`.

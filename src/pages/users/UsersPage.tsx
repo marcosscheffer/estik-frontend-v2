@@ -37,15 +37,14 @@ export function UsersPage() {
         </div>
         {error ? <div className="p-4"><ErrorState error={error} /></div> : view === "grid" ? (
           <CardGrid
-            rows={data?.content}
+            rows={data?.items}
             loading={isLoading || isFetching}
             rowKey={(u) => u.id}
             renderCard={(u) => <UserCard user={u} />}
           />
         ) : (
           <Table
-            // /users devolve "content", não "items"
-            rows={data?.content}
+            rows={data?.items}
             loading={isLoading || isFetching}
             rowKey={(u) => u.id}
             onRowClick={(u) => navigate(`/users/${u.id}`)}

@@ -4,7 +4,6 @@ import type {
   CreateTicketRequest,
   ForwardTicketRequest,
   PageParams,
-  TicketMessageResponse,
   PageResult,
   TicketHistoryResponse,
   TicketPriority,
@@ -25,8 +24,7 @@ export interface TicketFilters extends PageParams {
   requesterId?: UUID;
   regulatorId?: UUID;
   forwardedId?: UUID;
-  /** false = só os que ainda não foram encaminhados */
-  forwarded?: boolean;
+  // não mandar `forwarded`: o backend quebra com esse filtro
   assigneeId?: UUID;
 }
 
@@ -49,17 +47,10 @@ export const ticketsService = {
     api.put<TicketResponse>(`/tickets/${id}`, body).then((r) => r.data),
   action: (id: UUID, action: TicketAction) =>
     api.post<TicketResponse>(`/tickets/${id}/${action}`).then((r) => r.data),
-  /** Encaminha para um técnico; volta para OPEN e limpa o responsável. */
+  /** Encaminha para técnico/administrador; o chamado fica FORWARDED até a pessoa assumir. */
   forward: (id: UUID, body: ForwardTicketRequest) =>
     api.post<TicketResponse>(`/tickets/${id}/forward`, body).then((r) => r.data),
   remove: (id: UUID) => api.delete(`/tickets/${id}`),
-  /** Mensagens do chat, da mais nova para a mais antiga. */
-  messages: (id: UUID, params: PageParams) =>
-    api
-      .get<PageResult<TicketMessageResponse>>(`/tickets/${id}/messages`, { params: cleanParams(params) })
-      .then((r) => r.data),
-  sendMessage: (id: UUID, body: string) =>
-    api.post<TicketMessageResponse>(`/tickets/${id}/messages`, { body }).then((r) => r.data),
   histories: (id: UUID, params: TicketHistoryFilters) =>
     api
       .get<PageResult<TicketHistoryResponse>>(`/tickets/${id}/histories`, {

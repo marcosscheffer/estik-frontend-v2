@@ -17,7 +17,7 @@ export interface CategoryFilters extends PageParams {
 }
 export interface ItemFilters extends PageParams {
   name?: string;
-  code?: string;
+  // não mandar `code`: o backend quebra com esse filtro
   categoryId?: UUID;
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, CheckCheck, ChevronDown, ExternalLink } from "lucide-react";
 import clsx from "clsx";
@@ -18,9 +18,6 @@ export function NotificationBell() {
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const location = useLocation();
-  const path = useRef(location.pathname);
-  path.current = location.pathname;
   const [live, setLive] = useState(false);
 
   const { data: unread } = useQuery({
@@ -31,7 +28,7 @@ export function NotificationBell() {
   });
 
   // Tempo real: GET /notifications/stream manda "unread-count" ao conectar e
-  // "notification" a cada notificação nova (criação, encaminhamento, mensagem...).
+  // "notification" a cada notificação nova (novo chamado, assumido, resolvido, reaberto, cancelado).
   useEffect(() => {
     const ctrl = new AbortController();
     streamSse("/notifications/stream", {
@@ -52,8 +49,6 @@ export function NotificationBell() {
           if (n.referencesId) qc.invalidateQueries({ queryKey: ["tickets"] });
 
           const to = notificationLink(n);
-          // mensagem do chat que estou vendo agora: o chat já mostra, sem toast
-          if (n.type === "TICKET_MESSAGE" && to && path.current === to) return;
           toast(n.title, {
             description: `${notificationLabel(n.type)} · ${n.message}`,
             action: to ? { label: "Abrir", onClick: () => navigate(to) } : undefined,

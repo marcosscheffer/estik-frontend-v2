@@ -3,10 +3,10 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { Bell, Forward, Inbox, Monitor, Send, Ticket, UserCheck } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
-import { ticketsService, type TicketFilters } from "@/services/tickets";
+import { ticketsService } from "@/services/tickets";
 import { computersService } from "@/services/computers";
 import { notificationsService } from "@/services/notifications";
-import { access, canForwardTickets, receivesTickets, seesOnlyForwardedTickets } from "@/lib/roles";
+import { access, ticketTypeOf } from "@/lib/roles";
 import { accents, type AccentName } from "@/lib/accents";
 import { statusLabel } from "@/lib/labels";
 import { Card, CardGrid, CardHeader } from "@/components/ui";
@@ -17,6 +17,7 @@ import type { TicketStatus } from "@/types/api";
 const statuses = Object.keys(statusLabel) as TicketStatus[];
 const statusDot: Record<TicketStatus, string> = {
   OPEN: "bg-blue-500",
+  FORWARDED: "bg-violet-500",
   PROGRESS: "bg-amber-500",
   RESOLVED: "bg-emerald-500",
   CANCELLED: "bg-slate-500",
@@ -56,39 +57,33 @@ function Stat({
 }
 
 export function DashboardPage() {
-  const { claims, can } = useAuth();
+  const { claims, me: user, can } = useAuth();
   const me = claims!.sub;
-  const isStaff = can(access.ticketStaff);
-  const dispatcher = canForwardTickets(claims?.role);
-  const receiver = receivesTickets(claims?.role);
-  // técnico só conta o que foi encaminhado a ele
-  const scopeFilter: TicketFilters = seesOnlyForwardedTickets(claims?.role) ? { forwardedId: me } : {};
-  const scopeQs = scopeFilter.forwardedId ? `&forwardedId=${me}` : "";
+  const isStaff = can(access.forwardTickets);
+  const receiver = can(access.receiveTickets);
+  // a triagem mostra por padrão a área da minha função
+  const myType = ticketTypeOf(user?.function);
 
   const myTickets = useQuery({
     queryKey: ["tickets", "list", { requesterId: me, page: 0, size: 5 }],
     queryFn: () => ticketsService.list({ requesterId: me, page: 0, size: 5 }),
   });
-  const openTickets = useQuery({
-    queryKey: ["tickets", "list", { status: "OPEN", size: 1 }],
-    queryFn: () => ticketsService.list({ status: "OPEN", size: 1 }),
-    enabled: dispatcher,
-  });
-  // abertos que ninguém encaminhou ainda (fila do regulador)
-  const unforwarded = useQuery({
-    queryKey: ["tickets", "list", { forwarded: false, status: "OPEN", size: 1 }],
-    queryFn: () => ticketsService.list({ forwarded: false, status: "OPEN", size: 1 }),
-    enabled: dispatcher,
+  // abertos = ainda não encaminhados (fila de triagem do regulador)
+  const triageQuery = { status: "OPEN" as const, type: myType, size: 1 };
+  const triage = useQuery({
+    queryKey: ["tickets", "list", triageQuery],
+    queryFn: () => ticketsService.list(triageQuery),
+    enabled: isStaff && !!user,
   });
   const sent = useQuery({
     queryKey: ["tickets", "list", { regulatorId: me, size: 1 }],
     queryFn: () => ticketsService.list({ regulatorId: me, size: 1 }),
-    enabled: dispatcher,
+    enabled: isStaff,
   });
-  // encaminhados a mim que ainda não assumi (forward volta o chamado para OPEN)
+  // encaminhados a mim que ainda não assumi
   const forwarded = useQuery({
-    queryKey: ["tickets", "list", { forwardedId: me, status: "OPEN", size: 1 }],
-    queryFn: () => ticketsService.list({ forwardedId: me, status: "OPEN", size: 1 }),
+    queryKey: ["tickets", "list", { forwardedId: me, status: "FORWARDED", size: 1 }],
+    queryFn: () => ticketsService.list({ forwardedId: me, status: "FORWARDED", size: 1 }),
     enabled: receiver,
   });
   const assigned = useQuery({
@@ -103,8 +98,8 @@ export function DashboardPage() {
   });
   const byStatus = useQueries({
     queries: statuses.map((status) => ({
-      queryKey: ["tickets", "list", { ...scopeFilter, status, size: 1 }],
-      queryFn: () => ticketsService.list({ ...scopeFilter, status, size: 1 }),
+      queryKey: ["tickets", "list", { status, size: 1 }],
+      queryFn: () => ticketsService.list({ status, size: 1 }),
       enabled: isStaff,
     })),
   });
@@ -124,34 +119,27 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Meus chamados" value={myTickets.data?.totalItems} icon={Ticket} to={`/tickets?requesterId=${me}`} accent="blue" />
-        {dispatcher && (
+        <Stat label="Meus chamados" value={myTickets.data?.totalItems} icon={Ticket} to="/tickets?scope=mine" accent="blue" />
+        {isStaff && (
           <>
-            <Stat label="Chamados abertos" value={openTickets.data?.totalItems} icon={Ticket} to="/tickets?status=OPEN" accent="violet" />
-            <Stat
-              label="Não encaminhados"
-              value={unforwarded.data?.totalItems}
-              icon={Inbox}
-              to="/tickets?forwarded=false&status=OPEN"
-              accent="blue"
-            />
-            <Stat label="Encaminhados por mim" value={sent.data?.totalItems} icon={Forward} to={`/tickets?regulatorId=${me}`} accent="emerald" />
+            <Stat label="Para triagem" value={triage.data?.totalItems} icon={Inbox} to="/tickets?scope=triage" accent="violet" />
+            <Stat label="Encaminhados por mim" value={sent.data?.totalItems} icon={Forward} to="/tickets?scope=sent" accent="emerald" />
           </>
         )}
         {receiver && (
           <>
             <Stat
-              label="Encaminhados a mim"
+              label="Encaminhados pra mim"
               value={forwarded.data?.totalItems}
               icon={Send}
-              to={`/tickets?forwardedId=${me}&status=OPEN`}
+              to="/tickets?scope=forwarded&status=FORWARDED"
               accent="teal"
             />
             <Stat
-              label="Atribuídos a mim"
+              label="Em atendimento por mim"
               value={assigned.data?.totalItems}
               icon={UserCheck}
-              to={`/tickets?assigneeId=${me}&status=PROGRESS`}
+              to="/tickets?scope=assigned&status=PROGRESS"
               accent="amber"
             />
           </>
@@ -165,11 +153,11 @@ export function DashboardPage() {
       {isStaff && (
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-500">Chamados por status</h2>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {statuses.map((status, i) => (
               <Link
                 key={status}
-                to={`/tickets?status=${status}${scopeQs}`}
+                to={`/tickets?scope=all&status=${status}`}
                 className="rounded-xl bg-slate-800/50 p-4 ring-1 ring-white/[0.06] transition hover:-translate-y-0.5 hover:bg-slate-800/80 hover:ring-white/15"
               >
                 <p className="flex items-center gap-2 text-sm text-slate-400">
@@ -185,7 +173,7 @@ export function DashboardPage() {
         </section>
       )}
 
-      <TicketsByMonthChart filters={scopeFilter} />
+      <TicketsByMonthChart />
 
       <Card>
         <CardHeader

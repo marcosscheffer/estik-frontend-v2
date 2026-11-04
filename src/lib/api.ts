@@ -6,10 +6,9 @@ const baseURL = import.meta.env.VITE_API_URL || "/api";
 /** Usado pelo SSE, que é feito com fetch e não passa pelo axios. */
 export const apiBaseURL = baseURL;
 
-export const api = axios.create({
-  baseURL,
-  headers: { "Content-Type": "application/json" },
-});
+// Sem Content-Type fixo: o axios põe application/json para objetos e deixa o
+// navegador montar o multipart (com boundary) quando o body é FormData.
+export const api = axios.create({ baseURL });
 
 /** Cliente sem interceptors, usado só para o refresh (evita loop). */
 const bare = axios.create({ baseURL, headers: { "Content-Type": "application/json" } });
@@ -63,8 +62,13 @@ api.interceptors.request.use(async (config) => {
 
 type RetryConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
-// Depois: se voltou 401 (ou 403 com token vencido, que é o que o Spring
-// devolve hoje sem AuthenticationEntryPoint), tenta 1 refresh e repete.
+/** O Spring devolve 403 com corpo vazio quando o token falta ou venceu (não há 401). */
+function isEmptyBody(data: unknown): boolean {
+  return data == null || data === "" || (typeof data === "object" && Object.keys(data as object).length === 0);
+}
+
+// Depois: se voltou 401, ou 403 sem corpo (token vencido/ausente), ou 403
+// com o token já vencido, tenta 1 refresh e repete a requisição.
 api.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
@@ -77,7 +81,7 @@ api.interceptors.response.use(
       !original._retry &&
       !isAuthRoute(original.url) &&
       tokenStore.getRefresh() &&
-      (status === 401 || (status === 403 && tokenLooksExpired));
+      (status === 401 || (status === 403 && (tokenLooksExpired || isEmptyBody(error.response?.data))));
 
     if (shouldRefresh) {
       original._retry = true;

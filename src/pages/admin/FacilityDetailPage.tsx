@@ -123,7 +123,7 @@ export function FacilityDetailPage() {
     enabled: tab === "tickets",
   });
 
-  // /users pagina com "content", não "items"
+  // o service já normaliza o "content" de /users para "items"
   const userCount = useQuery({
     queryKey: ["users", "list", { facilityId: id, size: 1 }],
     queryFn: () => usersService.list({ facilityId: id, size: 1 }),
@@ -189,7 +189,7 @@ export function FacilityDetailPage() {
             <div className="p-4"><ErrorState error={users.error} /></div>
           ) : (
             <CardGrid
-              rows={users.data?.content}
+              rows={users.data?.items}
               loading={users.isLoading || users.isFetching}
               rowKey={(u) => u.id}
               empty="Nenhum usuário nesta unidade."

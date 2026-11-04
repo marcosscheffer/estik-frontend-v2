@@ -16,6 +16,7 @@ const HEIGHT = 280;
 // passar no validador de paleta sobre o fundo escuro (slate-900).
 const series = [
   { status: "OPEN", label: "Aberto", color: "#3b82f6" },
+  { status: "FORWARDED", label: "Encaminhado", color: "#8b5cf6" },
   { status: "PROGRESS", label: "Em andamento", color: "#d97706" },
   { status: "RESOLVED", label: "Resolvido", color: "#059669" },
 ] as const satisfies readonly { status: TicketStatus; label: string; color: string }[];
@@ -34,7 +35,7 @@ function lastMonths(): MonthRow[] {
   return Array.from({ length: MONTHS }, (_, i) => {
     const d = new Date(now.getFullYear(), now.getMonth() - (MONTHS - 1 - i), 1);
     const name = monthFmt.format(d).replace(".", "");
-    return { key: monthKey(d), label: `${name}/${String(d.getFullYear()).slice(2)}`, OPEN: 0, PROGRESS: 0, RESOLVED: 0 };
+    return { key: monthKey(d), label: `${name}/${String(d.getFullYear()).slice(2)}`, OPEN: 0, FORWARDED: 0, PROGRESS: 0, RESOLVED: 0 };
   });
 }
 

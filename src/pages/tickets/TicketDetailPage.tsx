@@ -5,7 +5,7 @@ import { Ban, CheckCircle2, Hand, Pencil, RotateCcw, Send, Trash2 } from "lucide
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService, type TicketAction } from "@/services/tickets";
-import { access, canForwardTickets } from "@/lib/roles";
+import { access } from "@/lib/roles";
 import { formatDateTime } from "@/lib/format";
 import { priorityLabel, priorityTone, statusLabel, statusTone, ticketTypeLabel } from "@/lib/labels";
 import {
@@ -69,11 +69,10 @@ export function TicketDetailPage() {
   const isAssignee = ticket.assignee?.id === me;
   const closed = ticket.status === "RESOLVED" || ticket.status === "CANCELLED";
   const isForwarded = ticket.forwarded?.id === me;
-  // só o técnico encaminhado assume (Ticket.assignTo)
-  const canAssume = isForwarded && !ticket.assignee && !closed;
-  // Ticket.forward aceita OPEN ou PROGRESS; a rota exige REGULATOR
-  // técnico não encaminha (regra só do front; a rota aceita REGULATOR+)
-  const canForward = canForwardTickets(claims?.role) && (ticket.status === "OPEN" || ticket.status === "PROGRESS");
+  // Ticket.assignTo: só quem recebeu o encaminhamento, não o solicitante, sem responsável ainda
+  const canAssume = isForwarded && !isRequester && !ticket.assignee && ticket.status === "FORWARDED";
+  // Ticket.forward aceita OPEN ou FORWARDED; a rota exige REGULATOR+
+  const canForward = can(access.forwardTickets) && (ticket.status === "OPEN" || ticket.status === "FORWARDED");
   const canResolve = isAssignee && ticket.status === "PROGRESS";
   const canReopen = isRequester && ticket.status === "RESOLVED";
   const canCancel = isRequester && !closed;
@@ -171,9 +170,7 @@ export function TicketDetailPage() {
         </Card>
       </div>
 
-      {(isRequester || isAssignee || canForwardTickets(claims?.role)) && (
-        <TicketChat ticket={ticket} me={me} className="mt-6 lg:w-2/3" />
-      )}
+      <TicketChat ticket={ticket} me={me} className="mt-6 lg:w-2/3" />
 
       <TicketFormModal open={editOpen} onClose={() => setEditOpen(false)} ticket={ticket} />
       {canForward && <ForwardTicketModal open={forwardOpen} onClose={() => setForwardOpen(false)} ticket={ticket} />}

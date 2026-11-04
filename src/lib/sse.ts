@@ -14,8 +14,10 @@ interface Options {
   onConnecting?: () => void;
   /** A conexão caiu; vai esperar e tentar de novo. */
   onDisconnect?: () => void;
-  /** Erro definitivo (4xx que não é token): para de tentar. */
+  /** Erro definitivo (4xx que não é token, ou um status de fatalStatuses): para de tentar. */
   onFatal?: (status: number) => void;
+  /** Status 5xx que também devem parar a reconexão (ex.: [500, 502] no chat). */
+  fatalStatuses?: number[];
   signal: AbortSignal;
 }
 
@@ -24,7 +26,7 @@ interface Options {
  * o header Authorization, e o JwtAuthenticationFilter só lê o token de lá.
  * Reconecta sozinho (backoff até 15s) enquanto o signal não for abortado.
  */
-export async function streamSse(path: string, { onEvent, onOpen, onConnecting, onDisconnect, onFatal, signal }: Options) {
+export async function streamSse(path: string, { onEvent, onOpen, onConnecting, onDisconnect, onFatal, fatalStatuses = [], signal }: Options) {
   let delay = 1000;
   let refreshed = false;
 
@@ -35,17 +37,20 @@ export async function streamSse(path: string, { onEvent, onOpen, onConnecting, o
       if (token && isExpiringSoon(token) && tokenStore.getRefresh()) token = await refreshAccessToken();
 
       const res = await fetch(`${apiBaseURL}${path}`, {
-        headers: { Accept: "text/event-stream", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        // application/json também, para os @ExceptionHandler do backend conseguirem responder o erro
+        headers: { Accept: "text/event-stream, application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         signal,
       });
 
-      // 401/403 com token vencido: tenta um refresh e reconecta na hora
-      if ((res.status === 401 || res.status === 403) && !refreshed && tokenStore.getRefresh() && isExpiringSoon(token, 0)) {
+      // 401, ou 403 com token vencido / corpo vazio (o Spring não manda 401):
+      // tenta um refresh e reconecta na hora. Se der 403 de novo, é permissão.
+      const emptyBody = res.status === 403 && !(await res.clone().text()).trim();
+      if ((res.status === 401 || (res.status === 403 && (emptyBody || isExpiringSoon(token, 0)))) && !refreshed && tokenStore.getRefresh()) {
         refreshed = true;
         await refreshAccessToken();
         continue;
       }
-      if (res.status >= 400 && res.status < 500) {
+      if ((res.status >= 400 && res.status < 500) || fatalStatuses.includes(res.status)) {
         onFatal?.(res.status);
         return;
       }
