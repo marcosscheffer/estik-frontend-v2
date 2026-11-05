@@ -1,111 +1,166 @@
-# estik-frontend
+# Estik — Frontend
 
-Front-end em React para a **estik-API** (Spring Boot). Consome os endpoints descritos no Swagger (`http://localhost:8080`).
+Web interface for **Estik**, an IT and maintenance management system: support tickets with real-time chat, computer inventory, stock per facility and department, and live notifications.
 
-## Stack
+This repository contains only the frontend. It consumes the **estik-java-api** REST API (Spring Boot), which must be running for the app to work.
 
-| Biblioteca | Para quê |
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)
+
+> The user interface is in Brazilian Portuguese.
+
+---
+
+## Table of contents
+
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Prerequisites](#prerequisites)
+- [Running in development](#running-in-development)
+- [Environment variables](#environment-variables)
+- [Running with Docker (production)](#running-with-docker-production)
+- [Scripts](#scripts)
+- [Project structure](#project-structure)
+- [Authentication](#authentication)
+- [Roles and permissions](#roles-and-permissions)
+
+---
+
+## Features
+
+- **Tickets**: opening (the facility is taken automatically from the logged-in user), triage, forwarding to technicians, handling, resolving, reopening, cancelling and status history. Tabs by scope: my tickets, awaiting triage, forwarded to me, being handled by me, and more.
+- **Ticket chat**: real-time conversation (SSE) between requester and assignee, with quoted replies and attachments (images and PDF) served through signed URLs.
+- **Real-time notifications**: bell with a live unread counter, via Server-Sent Events.
+- **Computers**: registration, configuration, moving between facilities and departments, and a history timeline.
+- **Stock**: balances per department and movements (entry, exit, adjustment and transfer).
+- **Catalog**: items and categories.
+- **Administration**: facilities, departments and users (activation, role and facility).
+- **Map**: tree view of Facility › Department › computers and items.
+- **Dashboard**: counters and a tickets-per-month chart.
+- Dark theme, responsive layout, and card or list views.
+
+## Tech stack
+
+| Library | Purpose |
 |---|---|
-| React 19 + TypeScript + Vite | base do projeto |
-| Tailwind CSS v4 | estilos (tema em `src/index.css`) |
-| axios | chamadas HTTP, com interceptors de JWT e refresh (`src/lib/api.ts`) |
-| TanStack Query | cache, loading e revalidação das requisições |
-| React Router | rotas e proteção por papel |
-| react-hook-form + zod | formulários e validação |
-| lucide-react, sonner, jwt-decode, clsx | ícones, toasts, leitura do token, classes condicionais |
+| React 19 + TypeScript + Vite | project foundation |
+| Tailwind CSS v4 | styling |
+| axios | HTTP, with JWT interceptors and automatic token refresh |
+| TanStack Query | request caching, loading states and revalidation |
+| React Router 7 | routing and role-based route guards |
+| react-hook-form + zod | forms and validation |
+| fetch + ReadableStream (`src/lib/sse.ts`) | SSE with the JWT in the header and automatic reconnection |
+| lucide-react, sonner, jwt-decode, clsx | icons, toasts, token decoding, conditional classes |
+| Nginx (Docker) | serves the build and proxies `/api` to the backend |
 
-## Como rodar
+## Prerequisites
 
-Pré-requisito: Node 20+ e o backend rodando em `localhost:8080`.
+- **Node.js 22+** and npm
+- The **estik-java-api** backend running (by default at `http://localhost:8080`)
+- Optional: **Docker** and **Docker Compose** for production
+
+## Running in development
 
 ```bash
+git clone <this-repository-url>
+cd estik-frontend
+
 npm install
-cp .env.example .env     # opcional, os valores padrão já funcionam
-npm run dev              # abre em http://localhost:5173
+cp .env.example .env   # optional: the defaults already work
+npm run dev            # http://localhost:5173
 ```
 
-Outros scripts: `npm run build` (gera `dist/`), `npm run preview`, `npm run typecheck`.
+> On Windows, if PowerShell blocks `npm`, use `npm.cmd install` and `npm.cmd run dev`.
 
-### E o CORS?
+In development, **no CORS configuration is needed** on the backend. The frontend calls `/api/...`, and the Vite proxy (`vite.config.ts`) forwards those requests to the backend. To the browser, everything comes from the same origin.
 
-Em desenvolvimento **não precisa configurar CORS no Spring**: o front chama `/api/...` e o proxy do Vite (`vite.config.ts`) repassa para `http://localhost:8080`, então o navegador só conversa com `localhost:5173`.
+## Environment variables
 
-Se um dia você servir o front em outro domínio/porta sem proxy, aí sim o backend precisa liberar CORS (um `CorsConfigurationSource` no `SecurityConfig` + `http.cors(...)`), e você troca `VITE_API_URL` para a URL completa da API.
+Copy `.env.example` to `.env`. The `.env` file is **not committed** to Git.
 
-## Estrutura
+| Variable | Used by | Default | Description |
+|---|---|---|---|
+| `VITE_API_URL` | build (axios) | `/api` | API base URL. Keep `/api` to go through the Vite or Nginx proxy. |
+| `VITE_BACKEND_URL` | dev (Vite proxy) | `http://localhost:8080` | Where the Vite proxy forwards requests. |
+| `BACKEND_URL` | Docker (Nginx) | `http://host.docker.internal:8080` | Where Nginx forwards `/api/` requests. |
+
+> `VITE_*` variables are baked into the JavaScript at build time. Never put secrets in them.
+
+## Running with Docker (production)
+
+The `Dockerfile` has two stages:
+
+1. **build**: `node:22` runs `npm ci` and `npm run build`.
+2. **runtime**: `nginx:1.28-alpine` serves only the `dist/` folder.
+
+Nginx (`nginx/default.conf.template`) does three things:
+
+- serves the app and falls back to `index.html` for unknown routes (SPA);
+- proxies `/api/` to `${BACKEND_URL}`;
+- turns off buffering so the notification and chat SSE streams work.
+
+```bash
+# backend running on the host machine, port 8080
+docker compose up -d --build
+# open http://localhost:3000
+```
+
+To point to a different backend:
+
+```bash
+BACKEND_URL=http://my-backend:8080 docker compose up -d --build
+```
+
+If the frontend is served from another domain without this proxy, the backend must allow CORS for that origin, and `VITE_API_URL` must be the full API URL.
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | development server with hot reload |
+| `npm run build` | type-checks (`tsc -b`) and builds for production into `dist/` |
+| `npm run preview` | serves `dist/` locally to check the build |
+| `npm run typecheck` | type-check only |
+
+## Project structure
 
 ```
 src/
-├── types/api.ts            tipos espelhando os schemas do OpenAPI
-├── lib/
-│   ├── api.ts              instância axios + refresh automático do token
-│   ├── tokens.ts           guarda access/refresh no localStorage e decodifica o JWT
-│   ├── roles.ts            hierarquia USER < TECHNICIAN < ADMINISTRATOR e quem vê cada área
-│   ├── errors.ts           transforma o ErrorResponse do backend em mensagem
-│   ├── labels.ts           textos em português dos enums
-│   └── format.ts           datas, números, limpeza de query params
-├── services/               uma função por endpoint, agrupadas por módulo
-├── contexts/AuthContext    usuário logado (claims do token + GET /users/{id})
-├── hooks/                  filtros na URL, lookups para selects, mutations com toast
+├── types/api.ts        types mirroring the API schemas (OpenAPI)
+├── lib/                axios + refresh, tokens, roles, errors, labels, formatting, SSE
+├── services/           one function per endpoint, grouped by module
+├── contexts/           AuthContext (logged-in user: token claims + GET /users/{id})
+├── hooks/              URL filters, select lookups, mutations with toasts
 ├── components/
-│   ├── ui/                 Button, Input, Select, Modal, Table, Pagination...
-│   ├── layout/             menu lateral, topo, sino de notificações, guards de rota
-│   └── LookupSelects.tsx   selects de unidade, departamento, item, categoria
-└── pages/                  telas por módulo
+│   ├── ui/             Button, Input, Select, Modal, Table, Pagination...
+│   └── layout/         sidebar, top bar, notification bell, route guards
+└── pages/              screens per module (tickets, computers, stock, admin, map...)
+nginx/                  Nginx configuration template
+Dockerfile              multi-stage build (Node → Nginx)
+docker-compose.yml      runs the frontend on port 3000
 ```
 
-## Como a autenticação funciona
+## Authentication
 
-1. `POST /auth/login` devolve `accessToken` (15 min) e `refreshToken` (7 dias); os dois ficam no `localStorage`.
-2. O access token já traz `sub` (id), `username` e `role`, então o front lê o papel direto dele. O `facilityId` vem de `GET /users/{id}`.
-3. Antes de cada requisição, se o access token vence em menos de 30 s, o axios chama `POST /auth/refresh` primeiro.
-4. Se mesmo assim voltar **401**, ou **403 com o token vencido** (hoje o Spring responde 403 porque não há `AuthenticationEntryPoint`), ele tenta um refresh e repete a requisição uma vez. Várias requisições ao mesmo tempo esperam o mesmo refresh.
-5. Se o refresh falhar, os tokens são apagados e o usuário volta para o login.
+1. `POST /auth/login` returns a short-lived `accessToken` and a `refreshToken`.
+2. The access token carries `sub` (id), `username` and `role`. The user's facility (`facilityId`) comes from `GET /users/{id}`.
+3. Before each request, if the access token is about to expire, axios calls `POST /auth/refresh` first.
+4. If the API answers 401, or 403 with an expired token, axios refreshes and retries the request once. Concurrent requests wait for the same refresh.
+5. If the refresh fails, the session ends and the user is sent back to the login page.
 
-## Telas
+New accounts are created **inactive and without a facility**. An administrator assigns the facility and activates the account.
 
-- **Início**: contadores (meus chamados, abertos, atribuídos a mim, computadores, notificações) e chamados recentes.
-- **Chamados**: lista com filtros e abas (todos / abertos por mim / atribuídos a mim), abrir, editar, assumir, resolver, reabrir, cancelar, excluir e histórico de status. Os botões seguem as regras do domínio `Ticket` (só o solicitante edita/cancela/reabre, só o responsável resolve).
-- **Computadores**: lista, cadastro, edição de configuração (com descrição do serviço), mover de unidade/departamento, histórico do computador.
-- **Histórico**: todos os registros de `/histories`, com filtro por direção e departamento.
-- **Estoque**: saldos (só leitura), movimentações, e um modal único para entrada, saída, ajuste e transferência.
-- **Itens** e **Categorias**: cadastro e edição.
-- **Unidades**, **Departamentos**, **Usuários**: administração (ativar/desativar, mudar papel e unidade). Ao ativar uma conta sem unidade, a tela pede a unidade antes.
-- **Notificações**: sino no topo com contador (atualiza a cada 30 s) e página com todas.
-- **Meu perfil**: editar usuário e e-mail.
+## Roles and permissions
 
-## Permissões no menu
+Hierarchy: `USER < TECHNICIAN < ADMINISTRATOR`, defined in `src/lib/roles.ts`.
 
-`src/lib/roles.ts` define o papel mínimo de cada área. É só para a interface; quem decide de verdade é o backend. Hoje está assim:
-
-| Área | Papel mínimo |
+| Area | Minimum role |
 |---|---|
-| Chamados, notificações, perfil | USER |
-| Computadores, histórico, estoque, itens, categorias, receber/assumir chamados | TECHNICIAN |
-| Unidades, departamentos, lista de usuários, papel/unidade/ativação de usuários, triagem e encaminhamento de chamados | ADMINISTRATOR |
+| Tickets, chat, notifications, profile | USER |
+| Computers, history, stock, catalog, taking tickets | TECHNICIAN |
+| Facilities, departments, users, triage and forwarding | ADMINISTRATOR |
 
-Se as regras do `SecurityConfig` forem diferentes, ajuste esse arquivo.
-
-## Cadastro de usuário
-
-O cadastro pede só usuário, e-mail (opcional) e senha. A conta nasce inativa e sem unidade; um administrador escolhe a unidade ao ativar, na página do usuário (`POST /users/{id}/facility` e depois `POST /users/{id}/activate`).
-
-## Sincronização com o backend (04/11)
-
-Ajustes feitos para o front bater com o estado atual do `estik-java-api`:
-
-- **Status `FORWARDED` ("Encaminhado")**: novo status nos tipos, badges, dashboard e gráfico. Fluxo: Aberto → Encaminhado → Em andamento → Resolvido (reabrir volta para Em andamento); o solicitante cancela em qualquer status menos Resolvido/Cancelado.
-- **Encaminhar**: o modal lista técnicos (`GET /users?role=TECHNICIAN`) e administradores; o solicitante e contas inativas não podem ser escolhidos. Só aparece para ADMINISTRATOR e com o chamado Aberto ou Encaminhado. "Assumir" só aparece para quem recebeu o encaminhamento, com o chamado Encaminhado.
-- **Abas de chamados**: Todos, Meus chamados, Para triagem (abertos, de todas as áreas; dá para filtrar por área), Encaminhados pra mim, Em atendimento por mim e Encaminhados por mim. A aba fica na URL (`?scope=`).
-- **Chat novo (`/chats/{chatId}`)**: substitui o antigo `/tickets/{id}/messages`. Abre quando o técnico assume (`ticket.chatId`), só solicitante e responsável participam e fica só leitura com o chamado resolvido/cancelado. Tem tempo real por SSE, respostas (citação), anexos (PNG/JPEG/WEBP/PDF, 10 MB cada, 30 MB no total) com miniatura e visualização ampliada. As URLs dos anexos expiram em 1h: o chat busca de novo a cada 50 min ou quando uma imagem falha.
-- **Papéis**: `src/lib/roles.ts` usa só a hierarquia USER < TECHNICIAN < ADMINISTRATOR (`hasRole(papel, mínimo)`). O papel REGULATOR e a "função" do usuário (TI/Manutenção) foram removidos do backend e do front.
-- **Auth**: o refresh automático também roda com 403 sem corpo (é assim que o backend responde a token vencido). Mensagens em português para conta inativa, usuário não encontrado e senha errada; o cadastro avisa para aguardar ativação por um administrador.
-- **Services**: `GET /users` é normalizado de `content` para `items`; a busca de itens não manda mais `code` e a de chamados não manda mais `forwarded` (os dois quebram no backend). O axios não fixa mais `Content-Type`, para o multipart do chat funcionar.
-- **Erros**: 409 em chamado mostra "o chamado foi alterado, recarregue"; 409 ao mudar o próprio papel/função/status também tem mensagem própria.
-
-Pendências no backend que limitam a tela:
-
-- `GET /chats/{id}` (participantes) só libera ADMINISTRATOR (o matcher é `/chat/{id}`, sem "s"); o front tira os participantes do próprio chamado.
-- O matcher `"/stock/"` não cobre `/stock/movements/**`, então movimentar estoque só funciona para ADMINISTRATOR (o front libera para TECHNICIAN e mostra um aviso no 403).
-- Encaminhar não gera notificação para o técnico.
-- `GET /chats/{id}/messages` não ordena; o front carrega todas as páginas e ordena por `createdAt`.
+> These frontend rules only shape the interface. Security is enforced by the backend.

@@ -1,5 +1,50 @@
-node_modules
-dist
+# ===== Dependências =====
+node_modules/
+.pnpm-store/
+
+# ===== Build de produção (Vite) =====
+dist/
+dist-ssr/
+build/
+*.local
+
+# ===== Cache do TypeScript / ferramentas =====
+*.tsbuildinfo
+.vite/
+.cache/
+.eslintcache
+.stylelintcache
+coverage/
+
+# ===== Variáveis de ambiente (NUNCA subir segredos) =====
 .env
-.env.local
+.env.*
+!.env.example
+
+# ===== Logs =====
+logs/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== Editores / IDE =====
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===== Sistema operacional =====
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== Arquivos locais do projeto =====
+prints/
+*.tgz
+*.zip

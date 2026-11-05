@@ -7,13 +7,11 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService } from "@/services/tickets";
 import { priorityLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
-import { FacilitySelect } from "@/components/LookupSelects";
 import type { TicketResponse } from "@/types/api";
 
 const schema = z.object({
   title: z.string().trim().min(1, "Informe um título"),
   description: z.string().trim(),
-  facilityId: z.string().min(1, "Selecione a unidade"),
   ticketType: z.enum(["IT", "MAINTENANCE"]),
   // opcional porque o select fica desabilitado na edição (e campo desabilitado não envia valor)
   priority: z.enum(["MILD", "MODERATE", "URGENT"]).optional(),
@@ -43,11 +41,14 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
     reset({
       title: ticket?.title ?? "",
       description: ticket?.description ?? "",
-      facilityId: ticket?.facility.id ?? me?.facilityId ?? "",
       ticketType: ticket?.ticketType ?? "IT",
       priority: ticket?.priority ?? "MODERATE",
     });
-  }, [open, ticket, me?.facilityId, reset]);
+  }, [open, ticket, reset]);
+
+  // A unidade do chamado é sempre a do usuário logado (não é mais escolhida no formulário).
+  const facilityId = me?.facilityId ?? undefined;
+  const missingFacility = !editing && !!me && !facilityId;
 
   const save = useApiMutation({
     mutationFn: (data: FormData) =>
@@ -60,6 +61,7 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
           })
         : ticketsService.create({
             ...data,
+            facilityId: facilityId!,
             description: data.description || undefined,
             priority: data.priority ?? "MODERATE",
           }),
@@ -82,7 +84,12 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
           <Button variant="secondary" onClick={onClose}>
             Cancelar
           </Button>
-          <Button form="ticket-form" type="submit" loading={save.isPending}>
+          <Button
+            form="ticket-form"
+            type="submit"
+            loading={save.isPending}
+            disabled={!editing && !facilityId}
+          >
             {editing ? "Salvar" : "Abrir chamado"}
           </Button>
         </>
@@ -106,14 +113,12 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
           hint={editing ? "A prioridade é ajustada por quem encaminha o chamado." : undefined}
           {...register("priority")}
         />
-        <FacilitySelect
-          label="Unidade"
-          className="sm:col-span-2"
-          disabled={editing}
-          hint={editing ? "A unidade não pode ser alterada depois de aberto." : undefined}
-          {...register("facilityId")}
-          error={errors.facilityId?.message}
-        />
+        {missingFacility && (
+          <p className="sm:col-span-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300">
+            Sua conta ainda não tem unidade definida. Peça ao administrador para vincular você a uma unidade antes de
+            abrir chamados.
+          </p>
+        )}
       </form>
     </Modal>
   );

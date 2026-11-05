@@ -1,0 +1,19 @@
+name: estik-front
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api
+    image: estik-frontend:latest
+    container_name: estik-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8080}
+      TZ: America/Sao_Paulo
+    ports:
+      - "3000:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
