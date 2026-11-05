@@ -12,6 +12,9 @@ This repository contains only the frontend. It consumes the **estik-java-api** R
 
 > The user interface is in Brazilian Portuguese.
 
+> [!NOTE]
+> **AI transparency:** this frontend was generated with the help of AI (Claude, by Anthropic), based on the backend code and its Swagger/OpenAPI documentation, and then reviewed and tested by the author. The backend (**estik-java-api**) was written by hand, without AI-generated code.
+
 ---
 
 ## Table of contents
@@ -26,6 +29,7 @@ This repository contains only the frontend. It consumes the **estik-java-api** R
 - [Project structure](#project-structure)
 - [Authentication](#authentication)
 - [Roles and permissions](#roles-and-permissions)
+- [AI transparency](#ai-transparency)
 
 ---
 
@@ -164,3 +168,9 @@ Hierarchy: `USER < TECHNICIAN < ADMINISTRATOR`, defined in `src/lib/roles.ts`.
 | Facilities, departments, users, triage and forwarding | ADMINISTRATOR |
 
 > These frontend rules only shape the interface. Security is enforced by the backend.
+
+## AI transparency
+
+This frontend was built with AI assistance (Claude, by Anthropic). The code was generated from the backend source and its OpenAPI specification, then reviewed, adjusted and tested against the running API by the author.
+
+The backend, **estik-java-api**, is a separate project written by hand, where AI was used only for explanations and code review, not to generate code.
