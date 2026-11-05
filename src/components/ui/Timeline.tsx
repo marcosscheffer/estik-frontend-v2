@@ -19,7 +19,8 @@ interface TimelineProps<T> {
   tone: (row: T) => Tone;
   render: (row: T) => React.ReactNode;
   onRowClick?: (row: T) => void;
-  empty?: string;
+  /** texto (vira EmptyState) ou um nó pronto */
+  empty?: React.ReactNode;
 }
 
 /** Linha do tempo vertical: bolinha colorida + conteúdo, ligadas por uma linha. */
@@ -31,7 +32,7 @@ export function Timeline<T>({ rows, loading, rowKey, tone, render, onRowClick, e
       </div>
     );
   }
-  if (!rows?.length) return <EmptyState message={empty ?? "Nada encontrado."} />;
+  if (!rows?.length) return typeof empty === "string" || !empty ? <EmptyState message={(empty as string) ?? "Nada encontrado."} /> : <>{empty}</>;
 
   return (
     <ol className={clsx("px-4 py-5 sm:px-6", loading && "opacity-60")}>

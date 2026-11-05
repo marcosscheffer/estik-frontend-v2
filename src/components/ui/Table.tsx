@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "./States";
 
 export interface Column<T> {
@@ -14,18 +13,28 @@ interface TableProps<T> {
   loading?: boolean;
   rowKey: (row: T) => string;
   onRowClick?: (row: T) => void;
-  empty?: string;
+  /** classe extra por linha (ex.: destacar um alerta) */
+  rowClassName?: (row: T) => string | false | undefined;
+  /** texto (vira EmptyState) ou um nó pronto */
+  empty?: React.ReactNode;
 }
 
-export function Table<T>({ columns, rows, loading, rowKey, onRowClick, empty }: TableProps<T>) {
+export function Table<T>({ columns, rows, loading, rowKey, onRowClick, rowClassName, empty }: TableProps<T>) {
   if (loading && !rows) {
+    // esqueleto: mesmas colunas, linhas cinzas pulsando
     return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="size-6 animate-spin text-slate-400" />
+      <div className="divide-y divide-slate-800/70" aria-busy="true" aria-label="Carregando">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex gap-6 px-4 py-3.5">
+            {columns.map((c, j) => (
+              <span key={c.header} className={clsx("h-4 animate-pulse rounded bg-slate-800", j === 0 ? "w-48" : "w-20")} />
+            ))}
+          </div>
+        ))}
       </div>
     );
   }
-  if (!rows?.length) return <EmptyState message={empty ?? "Nada encontrado."} />;
+  if (!rows?.length) return typeof empty === "string" || !empty ? <EmptyState message={(empty as string) ?? "Nada encontrado."} /> : <>{empty}</>;
 
   return (
     <div className="overflow-x-auto">
@@ -50,7 +59,7 @@ export function Table<T>({ columns, rows, loading, rowKey, onRowClick, empty }: 
             <tr
               key={rowKey(row)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={clsx(onRowClick && "cursor-pointer hover:bg-slate-800/60")}
+              className={clsx(onRowClick && "cursor-pointer transition-colors hover:bg-slate-800/60", rowClassName?.(row))}
             >
               {columns.map((c) => (
                 <td key={c.header} className={clsx("whitespace-nowrap px-4 py-3 text-slate-300", c.className)}>

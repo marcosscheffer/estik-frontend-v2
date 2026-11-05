@@ -26,7 +26,7 @@ export function getErrorMessage(error: unknown, fallback = "Algo deu errado"): s
     }
     // assign/function/deactivate no próprio usuário
     if (status === 409 && /^\/users\/[^/]+\/(assign|function|deactivate)$/.test(url)) {
-      return "Você não pode alterar o próprio papel, função ou status.";
+      return "Você não pode alterar o próprio papel ou status.";
     }
     if (status === 401 && /inactive/i.test(data?.message ?? "")) {
       return "Sua conta ainda está inativa. Aguarde a ativação por um administrador.";

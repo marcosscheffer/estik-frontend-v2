@@ -3,10 +3,8 @@
 export type UUID = string;
 export type ISODate = string;
 
-/** Hierarquia do backend: ADMINISTRATOR > TECHNICIAN > REGULATOR > USER. */
-export type Role = "USER" | "REGULATOR" | "TECHNICIAN" | "ADMINISTRATOR";
-/** Área de atuação do usuário (campo `function`). */
-export type UserFunction = "IT" | "MAINTENANCE" | "USER";
+/** Hierarquia do backend: ADMINISTRATOR > TECHNICIAN > USER. */
+export type Role = "USER" | "TECHNICIAN" | "ADMINISTRATOR";
 export type TicketStatus = "OPEN" | "FORWARDED" | "PROGRESS" | "CANCELLED" | "RESOLVED";
 export type TicketPriority = "MILD" | "MODERATE" | "URGENT";
 export type TicketType = "IT" | "MAINTENANCE";
@@ -87,7 +85,6 @@ export interface UserResponse {
   email?: string;
   /** Pode vir vazio até o administrador definir a unidade. */
   facilityId?: UUID | null;
-  function: UserFunction;
   role: Role;
   createdAt: ISODate;
   updatedAt: ISODate;
@@ -97,7 +94,6 @@ export interface UserResponseSummary {
   id: UUID;
   username: string;
   email?: string;
-  function: UserFunction;
   role: Role;
   active: boolean;
 }
@@ -195,6 +191,8 @@ export interface ComputerHistorySummaryResponse {
   serviceDescription: string;
   computer?: ComputerHistoryComputerResponse | null;
   direction: Direction;
+  /** data do registro */
+  createdAt?: ISODate;
 }
 export interface ComputerHistoryResponse extends ComputerHistorySummaryResponse {
   departamentId: UUID;
@@ -275,6 +273,8 @@ export interface ChatFileResponse {
   /** Relativo à API ("/files/{id}?expires=..&signature=.."), público e válido por 1h. */
   fileUrl: string;
   fileType: string;
+  /** nome original do arquivo enviado */
+  fileName?: string | null;
 }
 export interface ChatAttachmentResponse {
   id: UUID;
@@ -347,9 +347,11 @@ export interface StockItemResponse {
 }
 export interface StockBalanceSummaryResponse {
   id: UUID;
-  item: StockItemResponse;
+  item: StockItemResponse & { minimum?: number | null };
   facility: RefSummary;
   quantity: number;
+  /** estoque mínimo do item */
+  minimum?: number | null;
 }
 export interface StockBalanceResponse extends StockBalanceSummaryResponse {
   departament: RefSummary;
@@ -386,11 +388,12 @@ export interface TransferRequest {
 }
 
 /* ---------- Notifications ---------- */
-/** Tipos gravados pelo TicketEventListener (encaminhar ainda não notifica). */
+/** Tipos gravados pelo TicketEventListener. */
 export type NotificationType =
-  | "NEW_TICKET"
+  | "TICKET_CREATED"
+  | "TICKET_FORWARDED"
   | "TICKET_ASSUMED"
-  | "TICKET_REOPEN"
+  | "TICKET_REOPENED"
   | "TICKET_CANCELLED"
   | "TICKET_RESOLVED";
 export interface NotificationResponse {
@@ -400,7 +403,13 @@ export interface NotificationResponse {
   read: boolean;
   /** O backend manda string livre; os conhecidos estão em NotificationType. */
   type: NotificationType | (string & {});
-  /** id do chamado relacionado */
+  /** id do objeto relacionado (hoje sempre um chamado) */
+  referenceId?: UUID | null;
+  /** nome legível do objeto (título do chamado) */
+  referenceLabel?: string | null;
+  /** quem fez a ação */
+  actorId?: UUID | null;
+  /** nome antigo de referenceId (respostas antigas) */
   referencesId?: UUID | null;
   createdAt: ISODate;
 }
@@ -410,6 +419,10 @@ export interface NotificationStreamPayload {
   type: NotificationType | (string & {});
   title: string;
   message: string;
+  referenceId?: UUID | null;
+  referenceLabel?: string | null;
+  actorId?: UUID | null;
+  /** nome antigo de referenceId */
   referencesId?: UUID | null;
   createdAt: ISODate;
 }

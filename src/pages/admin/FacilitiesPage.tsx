@@ -4,8 +4,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Copy, Pencil, Plus, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { Building2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useFilters } from "@/hooks/useFilters";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useViewMode } from "@/hooks/useViewMode";
@@ -52,10 +51,6 @@ export function FacilitiesPage() {
   const open = (f: FacilitySummaryResponse) => navigate(`/facilities/${f.id}`);
 
   // stopPropagation: copiar/editar/excluir não podem abrir o detalhe
-  const copyId = (e: React.MouseEvent, f: FacilitySummaryResponse) => {
-    e.stopPropagation();
-    navigator.clipboard.writeText(f.id).then(() => toast.success("ID copiado"));
-  };
   const actions = (f: FacilitySummaryResponse) => (
     <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
       <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(f)} aria-label="Editar" />
@@ -82,8 +77,10 @@ export function FacilitiesPage() {
       <PageHeader title="Unidades" description="Filiais e locais atendidos."
         actions={<><ViewToggle value={view} onChange={setView} /><Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Nova unidade</Button></>} />
       <Card>
-        <div className="border-b border-slate-800 p-4 sm:max-w-sm">
+        <div className="border-b border-slate-800 p-4">
+          <div className="sm:max-w-sm">
           <SearchInput value={filters.q} onChange={(v) => setFilter("q", v)} placeholder="Buscar por nome" />
+          </div>
         </div>
         {error ? <div className="p-4"><ErrorState error={error} /></div> : view === "grid" ? (
           <CardGrid
@@ -100,16 +97,7 @@ export function FacilitiesPage() {
                     <Badge tone="blue">{f.code}</Badge>
                   </div>
                 </div>
-                <div className="mt-auto flex items-center justify-between gap-2">
-                  <button
-                    title="Copiar ID (usado no cadastro de usuários)"
-                    onClick={(e) => copyId(e, f)}
-                    className="inline-flex items-center gap-1 font-mono text-xs text-slate-500 hover:text-slate-200"
-                  >
-                    {f.id.slice(0, 8)}… <Copy className="size-3" />
-                  </button>
-                  {actions(f)}
-                </div>
+                <div className="mt-auto flex items-center justify-end gap-2">{actions(f)}</div>
               </Tile>
             )}
           />
@@ -122,18 +110,6 @@ export function FacilitiesPage() {
             columns={[
               { header: "Nome", cell: (f) => <span className="font-medium text-slate-100">{f.name}</span> },
               { header: "Código", cell: (f) => f.code },
-              {
-                header: "ID",
-                cell: (f) => (
-                  <button
-                    title="Copiar ID (usado no cadastro de usuários)"
-                    onClick={(e) => copyId(e, f)}
-                    className="inline-flex items-center gap-1 font-mono text-xs text-slate-500 hover:text-slate-200"
-                  >
-                    {f.id.slice(0, 8)}… <Copy className="size-3" />
-                  </button>
-                ),
-              },
               {
                 header: "",
                 className: "text-right",

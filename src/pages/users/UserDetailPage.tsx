@@ -7,17 +7,17 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { usersService } from "@/services/users";
 import { facilitiesService } from "@/services/facilities";
 import { formatDateTime } from "@/lib/format";
-import { functionLabel, functionTone, roleLabel, roleTone, toOptions } from "@/lib/labels";
+import { roleLabel, roleTone, toOptions } from "@/lib/labels";
 import { access } from "@/lib/roles";
 import { Badge, Button, Card, CardHeader, DetailList, ErrorState, Modal, PageHeader, PageLoader, Select } from "@/components/ui";
 import { FacilitySelect } from "@/components/LookupSelects";
-import type { Role, UserFunction } from "@/types/api";
+import type { Role } from "@/types/api";
 
 export function UserDetailPage() {
   const { id = "" } = useParams();
   const { claims, can } = useAuth();
   const isSelf = claims?.sub === id;
-  // papel, função, unidade e ativação caem no anyRequest -> ADMINISTRATOR
+  // papel, unidade e ativação caem no anyRequest -> ADMINISTRATOR
   const isAdmin = can(access.manageUsers);
 
   const { data: user, isLoading, error } = useQuery({
@@ -31,7 +31,6 @@ export function UserDetailPage() {
   });
 
   const [role, setRole] = useState<Role>("USER");
-  const [fn, setFn] = useState<UserFunction>("USER");
   const [facilityId, setFacilityId] = useState("");
   // ativar conta sem unidade pede a unidade antes (o cadastro não pede mais)
   const [activateOpen, setActivateOpen] = useState(false);
@@ -39,7 +38,6 @@ export function UserDetailPage() {
   useEffect(() => {
     if (user) {
       setRole(user.role);
-      setFn(user.function ?? "USER");
       setFacilityId(user.facilityId ?? "");
     }
   }, [user]);
@@ -54,11 +52,6 @@ export function UserDetailPage() {
     mutationFn: () => usersService.assign(id, role),
     invalidate,
     success: "Papel atualizado",
-  });
-  const changeFunction = useApiMutation({
-    mutationFn: () => usersService.changeFunction(id, fn),
-    invalidate,
-    success: "Função atualizada",
   });
   const activateWithFacility = useApiMutation({
     mutationFn: async () => {
@@ -118,7 +111,6 @@ export function UserDetailPage() {
               { label: "Usuário", value: user.username },
               { label: "E-mail", value: user.email || "—" },
               { label: "Papel", value: <Badge tone={roleTone[user.role]}>{roleLabel[user.role]}</Badge> },
-              { label: "Função", value: user.function ? <Badge tone={functionTone[user.function]}>{functionLabel[user.function]}</Badge> : "—" },
               { label: "Situação", value: <Badge tone={user.active ? "green" : "amber"}>{user.active ? "Ativo" : "Inativo"}</Badge> },
               { label: "Unidade", value: !user.facilityId ? <Badge tone="amber">Sem unidade</Badge> : facility.data ? `${facility.data.name} (${facility.data.code})` : "—" },
               { label: "Criado em", value: formatDateTime(user.createdAt) },
@@ -127,41 +119,28 @@ export function UserDetailPage() {
         </Card>
 
         {isAdmin && (
-        <div className="space-y-6">
           <Card>
-            <CardHeader
-              title="Papel"
-              description={isSelf ? "Você não pode mudar o próprio papel." : "Administrador > Técnico > Regulador > Usuário"}
-            />
-            <div className="flex gap-2 p-5">
-              <Select className="flex-1" options={toOptions(roleLabel)} value={role} disabled={isSelf} onChange={(e) => setRole(e.target.value as Role)} />
-              <Button disabled={isSelf || role === user.role} loading={assign.isPending} onClick={() => assign.mutate()}>Salvar</Button>
-            </div>
-            {/* técnico/regulador sem área não recebe chamados nem aparece no encaminhamento */}
-            {(role === "TECHNICIAN" || role === "REGULATOR") && fn === "USER" && (
-              <p className="mx-5 mb-5 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-300 ring-1 ring-amber-500/30">
-                {roleLabel[role]} precisa da função TI ou Manutenção para receber e ser encaminhado nos chamados da área.
+            <CardHeader title="Administração" />
+            {/* um card só, com seções: menos caixas soltas na tela */}
+            <section className="space-y-2 px-5 py-4">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Papel</h3>
+              <div className="flex gap-2">
+                <Select className="flex-1" options={toOptions(roleLabel)} value={role} disabled={isSelf} onChange={(e) => setRole(e.target.value as Role)} />
+                <Button disabled={isSelf || role === user.role} loading={assign.isPending} onClick={() => assign.mutate()}>Salvar</Button>
+              </div>
+              <p className="text-xs text-slate-500">
+                {isSelf ? "Você não pode mudar o próprio papel." : "Administrador > Técnico > Usuário. Técnico atende chamados; administrador também encaminha e gerencia o sistema."}
               </p>
-            )}
+            </section>
+            <section className="space-y-2 border-t border-slate-800 px-5 py-4">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Unidade</h3>
+              <div className="flex gap-2">
+                <FacilitySelect className="flex-1" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} />
+                <Button disabled={!facilityId || facilityId === user.facilityId} loading={move.isPending} onClick={() => move.mutate()}>Salvar</Button>
+              </div>
+              {!user.facilityId && <p className="text-xs text-amber-300">Esta conta ainda não tem unidade.</p>}
+            </section>
           </Card>
-          <Card>
-            <CardHeader
-              title="Função"
-              description={isSelf ? "Você não pode mudar a própria função." : "Define a área (TI ou Manutenção) dos chamados que a pessoa atende."}
-            />
-            <div className="flex gap-2 p-5">
-              <Select className="flex-1" options={toOptions(functionLabel)} value={fn} disabled={isSelf} onChange={(e) => setFn(e.target.value as UserFunction)} />
-              <Button disabled={isSelf || fn === user.function} loading={changeFunction.isPending} onClick={() => changeFunction.mutate()}>Salvar</Button>
-            </div>
-          </Card>
-          <Card>
-            <CardHeader title="Unidade" />
-            <div className="flex gap-2 p-5">
-              <FacilitySelect className="flex-1" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} />
-              <Button disabled={!facilityId || facilityId === user.facilityId} loading={move.isPending} onClick={() => move.mutate()}>Salvar</Button>
-            </div>
-          </Card>
-        </div>
         )}
       </div>
 

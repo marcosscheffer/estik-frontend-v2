@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "./States";
 
 interface CardGridProps<T> {
@@ -7,7 +6,8 @@ interface CardGridProps<T> {
   loading?: boolean;
   rowKey: (row: T) => string;
   renderCard: (row: T) => React.ReactNode;
-  empty?: string;
+  /** texto (vira EmptyState) ou um nó pronto */
+  empty?: React.ReactNode;
   /** Colunas mais estreitas para cards compactos (unidades, categorias...). */
   compact?: boolean;
   className?: string;
@@ -17,12 +17,14 @@ interface CardGridProps<T> {
 export function CardGrid<T>({ rows, loading, rowKey, renderCard, empty, compact, className }: CardGridProps<T>) {
   if (loading && !rows) {
     return (
-      <div className="flex justify-center py-16">
-        <Loader2 className="size-6 animate-spin text-slate-400" />
+      <div className={clsx("grid gap-4 p-4 sm:grid-cols-2", compact ? "lg:grid-cols-4" : "xl:grid-cols-3", className)} aria-busy="true">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-32 animate-pulse rounded-xl bg-slate-800/60" />
+        ))}
       </div>
     );
   }
-  if (!rows?.length) return <EmptyState message={empty ?? "Nada encontrado."} />;
+  if (!rows?.length) return typeof empty === "string" || !empty ? <EmptyState message={(empty as string) ?? "Nada encontrado."} /> : <>{empty}</>;
 
   return (
     <div

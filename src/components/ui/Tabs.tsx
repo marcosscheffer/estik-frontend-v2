@@ -1,7 +1,7 @@
 import clsx from "clsx";
 
 interface TabsProps<K extends string> {
-  tabs: { key: K; label: string }[];
+  tabs: { key: K; label: string; count?: number }[];
   value: K;
   onChange: (key: K) => void;
   className?: string;
@@ -22,6 +22,16 @@ export function Tabs<K extends string>({ tabs, value, onChange, className }: Tab
           )}
         >
           {t.label}
+          {t.count !== undefined && (
+            <span
+              className={clsx(
+                "ml-1.5 rounded-full px-1.5 py-px text-[11px] tabular-nums",
+                value === t.key ? "bg-slate-700 text-slate-200" : "bg-slate-800 text-slate-500",
+              )}
+            >
+              {t.count}
+            </span>
+          )}
         </button>
       ))}
     </div>

@@ -81,10 +81,14 @@ export function DepartamentsPage() {
       <PageHeader title="Departamentos" description="Setores dentro de cada unidade."
         actions={<><ViewToggle value={view} onChange={setView} /><Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Novo departamento</Button></>} />
       <Card>
-        <div className="grid gap-3 border-b border-slate-800 p-4 sm:grid-cols-3">
-          <SearchInput value={filters.name} onChange={(v) => setFilter("name", v)} placeholder="Buscar por nome" />
-          <SearchInput value={filters.code} onChange={(v) => setFilter("code", v)} placeholder="Buscar por código" />
-          <FacilitySelect placeholder="Todas as unidades" value={filters.facilityId} onChange={(e) => setFilter("facilityId", e.target.value)} />
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 p-4">
+          <div className="w-full min-w-56 flex-1">
+            <SearchInput value={filters.name} onChange={(v) => setFilter("name", v)} placeholder="Buscar por nome" />
+          </div>
+          <div className="w-full sm:w-48">
+            <SearchInput value={filters.code} onChange={(v) => setFilter("code", v)} placeholder="Código" />
+          </div>
+          <FacilitySelect className="w-full sm:w-52" placeholder="Todas as unidades" value={filters.facilityId} onChange={(e) => setFilter("facilityId", e.target.value)} />
         </div>
         {error ? <div className="p-4"><ErrorState error={error} /></div> : view === "grid" ? (
           <CardGrid

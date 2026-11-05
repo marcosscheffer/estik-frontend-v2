@@ -1,12 +1,25 @@
 import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
 import { getErrorMessage } from "@/lib/errors";
 
-export function EmptyState({ message, action }: { message: string; action?: React.ReactNode }) {
+export function EmptyState({
+  message,
+  title,
+  icon,
+  action,
+}: {
+  message: string;
+  title?: string;
+  icon?: React.ReactNode;
+  action?: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center gap-3 py-14 text-center text-sm text-slate-500">
-      <Inbox className="size-8 text-slate-600" />
-      <p>{message}</p>
-      {action}
+    <div className="flex flex-col items-center gap-2 px-6 py-14 text-center">
+      <span className="mb-1 flex size-12 items-center justify-center rounded-full bg-slate-800 text-slate-400">
+        {icon ?? <Inbox className="size-5" />}
+      </span>
+      {title && <p className="text-sm font-medium text-slate-200">{title}</p>}
+      <p className="max-w-sm text-sm text-slate-500">{message}</p>
+      {action && <div className="mt-2">{action}</div>}
     </div>
   );
 }

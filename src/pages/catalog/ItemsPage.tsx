@@ -79,9 +79,11 @@ export function ItemsPage() {
         actions={<><ViewToggle value={view} onChange={setView} /><Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Novo item</Button></>} />
       <Card>
         {/* sem filtro por SKU: o parâmetro `code` quebra no backend */}
-        <div className="grid gap-3 border-b border-slate-800 p-4 sm:grid-cols-2">
-          <SearchInput value={filters.name} onChange={(v) => setFilter("name", v)} placeholder="Buscar por nome" />
-          <CategorySelect placeholder="Todas as categorias" value={filters.categoryId} onChange={(e) => setFilter("categoryId", e.target.value)} />
+        <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 p-4">
+          <div className="w-full min-w-56 flex-1">
+            <SearchInput value={filters.name} onChange={(v) => setFilter("name", v)} placeholder="Buscar por nome" />
+          </div>
+          <CategorySelect className="w-full sm:w-56" placeholder="Todas as categorias" value={filters.categoryId} onChange={(e) => setFilter("categoryId", e.target.value)} />
         </div>
         {error ? <div className="p-4"><ErrorState error={error} /></div> : view === "grid" ? (
           <CardGrid

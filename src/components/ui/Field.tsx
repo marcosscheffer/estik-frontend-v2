@@ -1,4 +1,5 @@
-import { forwardRef, useId } from "react";
+import { forwardRef, useId, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import clsx from "clsx";
 
 const control =
@@ -96,6 +97,32 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
             </option>
           ))}
         </select>
+      )}
+    </Field>
+  );
+});
+
+/** Campo de senha com botão para mostrar/ocultar. */
+export const PasswordInput = forwardRef<HTMLInputElement, Omit<InputProps, "type">>(function PasswordInput(
+  { label, error, hint, className, ...rest },
+  ref,
+) {
+  const [show, setShow] = useState(false);
+  return (
+    <Field label={label} error={error} hint={hint} className={className}>
+      {(id) => (
+        <div className="relative">
+          <input id={id} ref={ref} type={show ? "text" : "password"} className={clsx(control, "pr-10", error && invalid)} {...rest} />
+          <button
+            type="button"
+            onClick={() => setShow((s) => !s)}
+            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-500 hover:text-slate-200"
+            aria-label={show ? "Ocultar senha" : "Mostrar senha"}
+            title={show ? "Ocultar senha" : "Mostrar senha"}
+          >
+            {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
       )}
     </Field>
   );

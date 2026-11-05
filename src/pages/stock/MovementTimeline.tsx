@@ -24,13 +24,17 @@ const typeStyle: Record<MovementType, { icon: React.ComponentType<{ className?: 
   ADJUSTMENT: { icon: SlidersHorizontal, box: "bg-amber-500/15 text-amber-400", qty: "text-amber-400", sign: "±" },
 };
 
-/** "Unidade › Departamento" em texto corrido. */
+/** "Unidade › Departamento" em texto corrido (o departamento só aparece se vier). */
 function PlaceText({ place }: { place: Place }) {
   return (
     <span className="font-medium text-slate-200">
       {place.facility?.name ?? "—"}
-      <ChevronRight className="mx-0.5 inline size-3 text-slate-500" />
-      {place.departament?.name ?? "—"}
+      {place.departament?.name && (
+        <>
+          <ChevronRight className="mx-0.5 inline size-3 text-slate-500" />
+          {place.departament.name}
+        </>
+      )}
     </span>
   );
 }
@@ -69,8 +73,11 @@ function Description({ m, currentDepartamentId }: { m: StockMovementSummaryRespo
     );
   }
 
-  // entrada usa o destino; saída usa a origem; ajuste usa o que vier
-  const place = m.type === "IN" ? to : m.type === "OUT" ? from : to.facility ? to : from;
+  // o backend grava o local da entrada/saída/ajuste em "source" ou "destination"
+  // conforme o tipo; usa o lado que vier preenchido (preferindo o esperado)
+  const preferred = m.type === "OUT" ? from : to;
+  const other = m.type === "OUT" ? to : from;
+  const place = preferred.facility ? preferred : other;
   const text = {
     IN: <>Entrada de {qty} em </>,
     OUT: <>Saída de {qty} de </>,
@@ -90,10 +97,12 @@ interface Props {
   onRowClick?: (m: StockMovementSummaryResponse) => void;
   /** Na aba do departamento: destaca o lado (origem/destino) que é ele. */
   currentDepartamentId?: string;
+  /** texto (vira EmptyState) ou um nó pronto */
+  empty?: React.ReactNode;
 }
 
 /** Movimentações com origem/destino (unidade + departamento) explícitos em cada linha. */
-export function MovementTimeline({ rows, loading, onRowClick, currentDepartamentId }: Props) {
+export function MovementTimeline({ rows, loading, onRowClick, currentDepartamentId, empty }: Props) {
   return (
     <Timeline
       rows={rows}
@@ -101,7 +110,7 @@ export function MovementTimeline({ rows, loading, onRowClick, currentDepartament
       rowKey={(x) => x.id}
       tone={(x) => movementTone[x.type]}
       onRowClick={onRowClick}
-      empty="Nenhuma movimentação."
+      empty={empty ?? "Nenhuma movimentação."}
       render={(m) => {
         const style = typeStyle[m.type];
         const Icon = style.icon;
