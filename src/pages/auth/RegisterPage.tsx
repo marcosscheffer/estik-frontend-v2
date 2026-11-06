@@ -12,7 +12,7 @@ import { AuthShell } from "./AuthShell";
 const schema = z
   .object({
     username: z.string().min(1, "Informe o usuário"),
-    email: z.union([z.literal(""), z.email("E-mail inválido")]),
+    email: z.email("E-mail inválido"),
     password: z.string().min(1, "Informe a senha"),
     confirm: z.string(),
   })
@@ -62,7 +62,7 @@ export function RegisterPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {!!error && <ErrorState error={error} />}
         <Input label="Usuário" autoComplete="username" {...register("username")} error={errors.username?.message} />
-        <Input label="E-mail (opcional)" type="email" {...register("email")} error={errors.email?.message} />
+        <Input label="E-mail" type="email" {...register("email")} error={errors.email?.message} />
         <PasswordInput label="Senha" autoComplete="new-password" {...register("password")} error={errors.password?.message} />
         <PasswordInput label="Confirmar senha" autoComplete="new-password" {...register("confirm")} error={errors.confirm?.message} />
         <Button type="submit" className="w-full" loading={isSubmitting}>
