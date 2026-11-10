@@ -92,25 +92,28 @@ interface Props {
   fill?: boolean;
   /** histórico do chamado (já carregado pela página) para mostrar os eventos na conversa */
   events?: TicketHistoryResponse[];
+  /** TICKET_MANAGE: lê qualquer conversa, mas só participante envia */
+  supervise?: boolean;
 }
 
 /**
  * Conversa do chamado (módulo /chats). Regras:
  * - o chat é criado quando o técnico assume (ticket.chatId fica preenchido);
- * - só solicitante e responsável participam (os outros levam 403);
+ * - solicitante e responsável participam e enviam mensagens;
+ * - quem tem TICKET_MANAGE lê qualquer conversa, mas não envia (não é participante);
  * - fica só leitura quando o chamado é resolvido ou cancelado.
- * GET /chats/{id} (participantes) hoje é só ADMINISTRATOR, por isso os
- * participantes saem do próprio chamado.
  */
-export function TicketChat({ ticket, me, className, fill, events }: Props) {
+export function TicketChat({ ticket, me, className, fill, events, supervise = false }: Props) {
   const qc = useQueryClient();
   const chatId = ticket.chatId ?? undefined;
   const key = useMemo(() => ["chats", chatId, "messages"], [chatId]);
 
   const participant = ticket.requester?.id === me || ticket.assignee?.id === me;
   const closed = ticket.status === "RESOLVED" || ticket.status === "CANCELLED";
-  const canRead = !!chatId && participant;
-  const canSend = canRead && !closed;
+  const canRead = !!chatId && (participant || supervise);
+  // supervisor só olha: o backend só aceita mensagem de participante
+  const canSend = !!chatId && participant && !closed;
+  const watching = canRead && !participant;
   const [conn, setConn] = useState<Connection>("connecting");
   // erro definitivo no stream: não reconecta e mostra um aviso no card
   const [streamError, setStreamError] = useState<string | null>(null);
@@ -157,7 +160,7 @@ export function TicketChat({ ticket, me, className, fill, events }: Props) {
 
   // tempo real: GET /chats/{id}/stream manda o evento "message"
   useEffect(() => {
-    // só solicitante e responsável (comparado com o sub do token) abrem o stream
+    // participantes e supervisores (TICKET_MANAGE) abrem o stream
     if (!canRead || closed || !chatId) return;
     setStreamError(null);
     const ctrl = new AbortController();
@@ -543,7 +546,11 @@ export function TicketChat({ ticket, me, className, fill, events }: Props) {
             </div>
           )}
         </div>
-        {canSend && !streamError ? (
+        {watching ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-400" title="Você vê esta conversa pela permissão de supervisão de chats">
+            <Lock className="size-3" /> Supervisão: somente leitura
+          </span>
+        ) : canSend && !streamError ? (
           <span role="status" className="inline-flex items-center gap-2 text-xs text-slate-400">
             <span className={clsx("size-2 rounded-full", connection[conn].dot)} aria-hidden />
             {connection[conn].label}
@@ -563,8 +570,8 @@ export function TicketChat({ ticket, me, className, fill, events }: Props) {
 
       {!chatId ? (
         empty(<MessagesSquare className="size-5" />, "A conversa ainda não começou", "O chat abre quando um técnico assumir o chamado.")
-      ) : !participant || forbidden ? (
-        empty(<Lock className="size-5" />, "Conversa privada", "Só o solicitante e o responsável participam desta conversa.")
+      ) : !canRead || forbidden ? (
+        empty(<Lock className="size-5" />, "Conversa privada", "Só o solicitante, o responsável e a supervisão veem esta conversa.")
       ) : messages.error ? (
         <div className="p-4">
           <ErrorState error={messages.error} />

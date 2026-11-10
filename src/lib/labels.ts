@@ -2,7 +2,6 @@ import type {
   Direction,
   MovementType,
   OsType,
-  Role,
   StorageType,
   TicketPriority,
   TicketStatus,
@@ -12,16 +11,6 @@ import { describeNotification, notificationRefId, type NotificationRef } from "@
 
 export type Tone = "gray" | "blue" | "green" | "amber" | "red" | "violet";
 
-export const roleLabel: Record<Role, string> = {
-  USER: "Usuário",
-  TECHNICIAN: "Técnico",
-  ADMINISTRATOR: "Administrador",
-};
-export const roleTone: Record<Role, Tone> = {
-  USER: "gray",
-  TECHNICIAN: "amber",
-  ADMINISTRATOR: "violet",
-};
 
 /** Rótulo curto do tipo de notificação (textos completos em lib/notifications.ts). */
 export function notificationLabel(type: string): string {

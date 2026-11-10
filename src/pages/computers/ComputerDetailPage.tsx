@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRightLeft, Pencil, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
-import { access } from "@/lib/roles";
+import { access } from "@/lib/permissions";
 import { computersService, historiesService } from "@/services/computers";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { osLabel, storageTypeLabel } from "@/lib/labels";

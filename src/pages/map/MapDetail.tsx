@@ -8,7 +8,7 @@ import { facilitiesService } from "@/services/facilities";
 import { departamentsService } from "@/services/departaments";
 import { computersService } from "@/services/computers";
 import { stockService } from "@/services/stock";
-import { access } from "@/lib/roles";
+import { access } from "@/lib/permissions";
 import { formatDateTime, formatNumber } from "@/lib/format";
 import { osLabel, storageTypeLabel } from "@/lib/labels";
 import { DetailList, ErrorState, PageLoader } from "@/components/ui";

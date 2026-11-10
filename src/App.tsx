@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { access } from "@/lib/roles";
+import { access } from "@/lib/permissions";
 import { AppLayout } from "@/components/layout/AppLayout";
-import { GuestRoute, ProtectedRoute, RoleRoute } from "@/components/layout/RouteGuards";
+import { GuestRoute, ProtectedRoute, PermissionRoute } from "@/components/layout/RouteGuards";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { DashboardPage } from "@/pages/DashboardPage";
@@ -24,6 +24,7 @@ import { NotificationsPage } from "@/pages/NotificationsPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { MapPage } from "@/pages/map/MapPage";
+import { RolesPage } from "@/pages/access/RolesPage";
 
 export default function App() {
   return (
@@ -41,14 +42,14 @@ export default function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
 
-          <Route element={<RoleRoute role={access.computers} />}>
+          <Route element={<PermissionRoute need={access.computers} />}>
             <Route path="map" element={<MapPage />} />
             <Route path="computers" element={<ComputersPage />} />
             <Route path="computers/:id" element={<ComputerDetailPage />} />
             <Route path="histories" element={<HistoriesPage />} />
           </Route>
 
-          <Route element={<RoleRoute role={access.stock} />}>
+          <Route element={<PermissionRoute need={access.stock} />}>
             <Route path="stock" element={<Navigate to="/stock/balances" replace />} />
             <Route path="stock/balances" element={<BalancesPage />} />
             <Route path="stock/movements" element={<MovementsPage />} />
@@ -56,16 +57,21 @@ export default function App() {
             <Route path="categories" element={<CategoriesPage />} />
           </Route>
 
-          <Route element={<RoleRoute role={access.facilities} />}>
+          <Route element={<PermissionRoute need={access.facilities} />}>
             <Route path="facilities" element={<FacilitiesPage />} />
             <Route path="facilities/:id" element={<FacilityDetailPage />} />
             <Route path="departaments" element={<DepartamentsPage />} />
             <Route path="departaments/:id" element={<DepartamentDetailPage />} />
           </Route>
 
-          <Route element={<RoleRoute role={access.users} />}>
+          <Route element={<PermissionRoute need={access.users} />}>
             <Route path="users" element={<UsersPage />} />
             <Route path="users/:id" element={<UserDetailPage />} />
+          </Route>
+
+          <Route element={<PermissionRoute need={access.roles} />}>
+            <Route path="roles" element={<RolesPage />} />
+            <Route path="roles/:id" element={<RolesPage />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

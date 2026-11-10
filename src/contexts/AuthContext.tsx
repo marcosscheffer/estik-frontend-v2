@@ -1,19 +1,20 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { decodeAccess, tokenStore, type AccessClaims } from "@/lib/tokens";
-import { hasRole } from "@/lib/roles";
+import { hasPermission, type Need } from "@/lib/permissions";
 import { authService } from "@/services/auth";
 import { usersService } from "@/services/users";
-import type { LoginRequest, Role, UserResponse } from "@/types/api";
+import type { LoginRequest, UserResponse } from "@/types/api";
 
 interface AuthContextValue {
   claims: AccessClaims | null;
-  /** Dados completos do usuário logado (GET /users/{id}); traz facilityId. */
+  /** Dados completos do usuário logado (GET /users/me); traz facilityId. */
   me: UserResponse | undefined;
   isAuthenticated: boolean;
   login: (body: LoginRequest) => Promise<void>;
   logout: () => void;
-  can: (role: Role) => boolean;
+  /** true se o token tem a permissão (ou uma das permissões da lista). */
+  can: (need: Need) => boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -25,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const { data: me } = useQuery({
     queryKey: ["me", claims?.sub],
-    queryFn: () => usersService.get(claims!.sub),
+    queryFn: () => usersService.me(),
     enabled: !!claims?.sub,
     staleTime: 5 * 60_000,
   });
@@ -42,7 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => tokenStore.clear(), []);
 
-  const can = useCallback((role: Role) => hasRole(claims?.role, role), [claims?.role]);
+  const permissions = claims?.permissions;
+  const can = useCallback((need: Need) => hasPermission(permissions, need), [permissions]);
 
   const value = useMemo<AuthContextValue>(
     () => ({ claims, me, isAuthenticated: !!claims, login, logout, can }),

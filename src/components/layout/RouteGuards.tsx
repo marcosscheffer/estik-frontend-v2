@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Role } from "@/types/api";
+import type { Need } from "@/lib/permissions";
 
 export function ProtectedRoute() {
   const { isAuthenticated } = useAuth();
@@ -16,9 +16,9 @@ export function GuestRoute() {
   return <Outlet />;
 }
 
-export function RoleRoute({ role }: { role: Role }) {
+export function PermissionRoute({ need }: { need: Need }) {
   const { can } = useAuth();
-  if (!can(role)) return <Forbidden />;
+  if (!can(need)) return <Forbidden />;
   return <Outlet />;
 }
 
@@ -28,7 +28,7 @@ export function Forbidden() {
       <ShieldAlert className="size-10 text-slate-600" />
       <h1 className="text-lg font-semibold text-slate-100">Acesso restrito</h1>
       <p className="max-w-sm text-sm text-slate-500">
-        Seu papel não tem permissão para ver esta área. Peça a um administrador para ajustar seu acesso.
+        Seu perfil não tem permissão para ver esta área. Peça a um administrador para ajustar seu acesso.
       </p>
     </div>
   );

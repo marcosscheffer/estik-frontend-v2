@@ -1,5 +1,5 @@
 import { jwtDecode } from "jwt-decode";
-import type { Role, TokenResponse, UUID } from "@/types/api";
+import type { Permission, TokenResponse, UUID } from "@/types/api";
 
 const ACCESS_KEY = "estik.accessToken";
 const REFRESH_KEY = "estik.refreshToken";
@@ -8,7 +8,10 @@ const REFRESH_KEY = "estik.refreshToken";
 export interface AccessClaims {
   sub: UUID;
   username: string;
-  role: Role;
+  /** id do perfil */
+  role?: UUID;
+  /** o filtro do backend transforma cada uma em authority */
+  permissions?: Permission[];
   type: "access" | "refresh";
   iss?: string;
   iat?: number;

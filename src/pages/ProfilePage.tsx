@@ -5,7 +5,7 @@ import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { usersService } from "@/services/users";
-import { roleLabel } from "@/lib/labels";
+import { permissionLabel } from "@/lib/permissions";
 import { Button, Card, CardHeader, Input, PageHeader, PageLoader } from "@/components/ui";
 
 const schema = z.object({
@@ -32,7 +32,7 @@ export function ProfilePage() {
 
   return (
     <>
-      <PageHeader title="Meu perfil" description={`Papel: ${roleLabel[me.role]}`} />
+      <PageHeader title="Meu perfil" description="Seus dados de acesso ao estik." />
       <Card className="max-w-xl">
         <CardHeader
           title="Dados da conta"
@@ -45,6 +45,20 @@ export function ProfilePage() {
             <Button type="submit" disabled={!isDirty} loading={save.isPending}>Salvar</Button>
           </div>
         </form>
+      </Card>
+      <Card className="mt-6 max-w-xl">
+        <CardHeader title="O que você pode fazer" description="Vem do seu perfil. Se mudarem seu perfil, atualiza no próximo login." />
+        <ul className="flex flex-wrap gap-1.5 p-5">
+          {(claims?.permissions ?? []).length === 0 ? (
+            <li className="text-sm text-slate-500">Nenhuma permissão no seu perfil.</li>
+          ) : (
+            (claims?.permissions ?? []).map((p) => (
+              <li key={p} className="rounded-full bg-slate-800 px-2.5 py-1 text-xs text-slate-300">
+                {permissionLabel[p] ?? p}
+              </li>
+            ))
+          )}
+        </ul>
       </Card>
     </>
   );

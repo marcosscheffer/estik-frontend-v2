@@ -6,7 +6,7 @@ import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService, type TicketAction } from "@/services/tickets";
-import { access } from "@/lib/roles";
+import { access } from "@/lib/permissions";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { priorityLabel, priorityTone, ticketTypeLabel } from "@/lib/labels";
 import {
@@ -212,6 +212,7 @@ export function TicketDetailPage() {
           ticket={ticket}
           me={me}
           fill
+          supervise={can(access.superviseChats)}
           events={history.data?.items}
           className="order-2 h-[70vh] min-h-[420px] lg:sticky lg:top-20 lg:h-[calc(100vh-7.5rem)] lg:min-h-[520px]"
         />

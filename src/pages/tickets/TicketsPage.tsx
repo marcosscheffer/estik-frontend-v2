@@ -6,7 +6,7 @@ import { FilterX, Inbox, Plus, SearchX } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFilters } from "@/hooks/useFilters";
 import { ticketsService, type TicketFilters } from "@/services/tickets";
-import { access } from "@/lib/roles";
+import { access } from "@/lib/permissions";
 import { formatDateTime, formatRelative } from "@/lib/format";
 import { priorityLabel, priorityTone, statusLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
 import { useViewMode } from "@/hooks/useViewMode";

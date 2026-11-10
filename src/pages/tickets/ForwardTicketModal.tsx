@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Send } from "lucide-react";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService } from "@/services/tickets";
 import { usersService } from "@/services/users";
-import { priorityLabel, roleLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
+import { priorityLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
+import { prettyRole, useRoleIdsWith, useRoles } from "@/hooks/useRoles";
 import { Button, Modal, Select } from "@/components/ui";
 import type { TicketPriority, TicketResponse } from "@/types/api";
 
@@ -13,6 +14,8 @@ interface Props {
   onClose: () => void;
   ticket: TicketResponse;
 }
+
+const RECEIVERS = ["TICKET_WORK"] as const;
 
 /** Escolhe o técnico e ajusta a prioridade (POST /tickets/{id}/forward). */
 export function ForwardTicketModal({ open, onClose, ticket }: Props) {
@@ -25,33 +28,29 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
     setPriority(ticket.priority);
   }, [open, ticket]);
 
-  // Técnicos e administradores. GET /users filtra um papel por vez, então são duas buscas.
-  const targets = useQueries({
-    queries: [
-      { role: "TECHNICIAN" as const, size: 100 },
-      { role: "ADMINISTRATOR" as const, size: 100 },
-    ].map((params) => ({
-      queryKey: ["users", "list", params],
-      queryFn: () => usersService.list(params),
-      enabled: open,
-    })),
+  // GET /users ainda não filtra por permissão: busca os ativos e, quando dá para
+  // ler os perfis (ACCESS_MANAGE), mostra só quem tem TICKET_WORK.
+  const users = useQuery({
+    queryKey: ["users", "list", { size: 100 }],
+    queryFn: () => usersService.list({ size: 100 }),
+    enabled: open,
   });
-  const loading = targets.some((q) => q.isLoading);
-  const loadError = targets.some((q) => q.error);
-  const seen = new Set<string>();
-  const options = targets
-    .flatMap((q) => q.data?.items ?? [])
-    .filter((u) => !seen.has(u.id) && !!seen.add(u.id))
-    // técnicos primeiro, depois administradores
-    .sort((a, b) => Number(a.role === "ADMINISTRATOR") - Number(b.role === "ADMINISTRATOR") || a.username.localeCompare(b.username))
+  const { nameOf } = useRoles();
+  const workers = useRoleIdsWith(RECEIVERS, open);
+  const loading = users.isLoading;
+  const loadError = !!users.error;
+  const options = (users.data?.items ?? [])
+    .filter((u) => !workers || workers.has(u.role))
+    .sort((a, b) => a.username.localeCompare(b.username))
     .map((u) => {
       // o solicitante e quem está inativo aparecem, mas não dá para escolher
       const isRequester = u.id === ticket.requester?.id;
       const current = u.id === ticket.forwarded?.id;
       const note = isRequester ? " (solicitante)" : !u.active ? " (inativo)" : current ? " (atual)" : "";
+      const role = nameOf(u.role);
       return {
         value: u.id,
-        label: `${u.username} — ${roleLabel[u.role]}${note}`,
+        label: `${u.username}${role ? ` — ${prettyRole(role)}` : ""}${note}`,
         disabled: isRequester || !u.active,
       };
     });
@@ -71,7 +70,7 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
       open={open}
       onClose={onClose}
       title="Encaminhar chamado"
-      description={`Chamado de ${area}: escolha um técnico ou um administrador. O chamado fica "Encaminhado" até a pessoa assumir.`}
+      description={`Chamado de ${area}: escolha quem vai atender. O chamado fica "Encaminhado" até a pessoa assumir.`}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -91,7 +90,13 @@ export function ForwardTicketModal({ open, onClose, ticket }: Props) {
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
           error={loadError ? "Não foi possível carregar a lista." : undefined}
-          hint={ticket.forwarded ? `Hoje está com ${ticket.forwarded.username}. Reencaminhar troca o responsável.` : undefined}
+          hint={
+            ticket.forwarded
+              ? `Hoje está com ${ticket.forwarded.username}. Reencaminhar troca o responsável.`
+              : !workers
+                ? "Mostrando todos os usuários ativos: sem acesso aos perfis não dá para filtrar quem atende chamados."
+                : undefined
+          }
         />
         <Select
           label="Prioridade"

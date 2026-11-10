@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ClipboardList,
   History,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Map as MapIcon,
@@ -23,17 +24,17 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { access } from "@/lib/roles";
-import { roleLabel } from "@/lib/labels";
+import { access, type Need } from "@/lib/permissions";
+import { prettyRole, useRoles } from "@/hooks/useRoles";
 import { accentFor } from "@/lib/accents";
-import type { Role } from "@/types/api";
 import { NotificationBell } from "./NotificationBell";
 
 interface NavItem {
   to: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  role: Role;
+  /** permissão para ver o item; sem need = qualquer logado */
+  need?: Need;
 }
 
 interface NavGroup {
@@ -46,39 +47,40 @@ interface NavGroup {
 const groups: NavGroup[] = [
   {
     title: "Início",
-    items: [{ to: "/", label: "Início", icon: LayoutDashboard, role: "USER" }],
+    items: [{ to: "/", label: "Início", icon: LayoutDashboard, }],
   },
   {
     title: "Atendimento",
     icon: Ticket,
-    items: [{ to: "/tickets", label: "Chamados", icon: Ticket, role: access.tickets }],
+    items: [{ to: "/tickets", label: "Chamados", icon: Ticket, need: access.tickets }],
   },
   {
     title: "Inventário",
     icon: Monitor,
     items: [
-      { to: "/map", label: "Mapa", icon: MapIcon, role: access.computers },
-      { to: "/computers", label: "Computadores", icon: Monitor, role: access.computers },
-      { to: "/histories", label: "Histórico", icon: History, role: access.histories },
+      { to: "/map", label: "Mapa", icon: MapIcon, need: access.computers },
+      { to: "/computers", label: "Computadores", icon: Monitor, need: access.computers },
+      { to: "/histories", label: "Histórico", icon: History, need: access.histories },
     ],
   },
   {
     title: "Estoque",
     icon: Boxes,
     items: [
-      { to: "/stock/balances", label: "Saldos", icon: Boxes, role: access.stock },
-      { to: "/stock/movements", label: "Movimentações", icon: Repeat, role: access.stock },
-      { to: "/items", label: "Itens", icon: Package, role: access.catalog },
-      { to: "/categories", label: "Categorias", icon: Tags, role: access.catalog },
+      { to: "/stock/balances", label: "Saldos", icon: Boxes, need: access.stock },
+      { to: "/stock/movements", label: "Movimentações", icon: Repeat, need: access.stock },
+      { to: "/items", label: "Itens", icon: Package, need: access.catalog },
+      { to: "/categories", label: "Categorias", icon: Tags, need: access.catalog },
     ],
   },
   {
     title: "Administração",
     icon: ShieldCheck,
     items: [
-      { to: "/facilities", label: "Unidades", icon: Building2, role: access.facilities },
-      { to: "/departaments", label: "Departamentos", icon: Network, role: access.departaments },
-      { to: "/users", label: "Usuários", icon: Users, role: access.users },
+      { to: "/facilities", label: "Unidades", icon: Building2, need: access.facilities },
+      { to: "/departaments", label: "Departamentos", icon: Network, need: access.departaments },
+      { to: "/users", label: "Usuários", icon: Users, need: access.users },
+      { to: "/roles", label: "Perfis", icon: KeyRound, need: access.roles },
     ],
   },
 ];
@@ -169,7 +171,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <span className="text-lg font-semibold tracking-tight text-white">estik</span>
       </div>
       {groups.map((g) => {
-        const visible = g.items.filter((i) => can(i.role));
+        const visible = g.items.filter((i) => !i.need || can(i.need));
         if (!visible.length) return null;
 
         // sem ícone (Início) ou com um item só para este papel: link direto, sem dropdown
@@ -222,6 +224,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppLayout() {
   const { claims, logout } = useAuth();
+  const { nameOf, enabled: showRole } = useRoles();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -266,7 +269,7 @@ export function AppLayout() {
             <UserCircle className="size-6 text-slate-400" />
             <span className="hidden text-left leading-tight sm:block">
               <span className="block font-medium text-slate-200">{claims?.username}</span>
-              <span className="block text-xs text-slate-500">{claims && roleLabel[claims.role]}</span>
+              {showRole && <span className="block text-xs text-slate-500">{prettyRole(nameOf(claims?.role))}</span>}
             </span>
           </NavLink>
           <button

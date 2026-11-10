@@ -3,8 +3,19 @@
 export type UUID = string;
 export type ISODate = string;
 
-/** Hierarquia do backend: ADMINISTRATOR > TECHNICIAN > USER. */
-export type Role = "USER" | "TECHNICIAN" | "ADMINISTRATOR";
+/** Espelho do PermissionEnum do backend. O perfil (role) agora é uma linha da tabela roles. */
+export type Permission =
+  | "TICKET_OPEN"
+  | "TICKET_WORK"
+  | "TICKET_SUPERVISOR"
+  | "TICKET_MANAGE"
+  | "STOCK_READ"
+  | "STOCK_MANAGE"
+  | "COMPUTER_READ"
+  | "COMPUTER_MANAGE"
+  | "FACILITY_MANAGE"
+  | "USER_MANAGE"
+  | "ACCESS_MANAGE";
 export type TicketStatus = "OPEN" | "FORWARDED" | "PROGRESS" | "CANCELLED" | "RESOLVED";
 export type TicketPriority = "MILD" | "MODERATE" | "URGENT";
 export type TicketType = "IT" | "MAINTENANCE";
@@ -85,7 +96,8 @@ export interface UserResponse {
   email?: string;
   /** Pode vir vazio até o administrador definir a unidade. */
   facilityId?: UUID | null;
-  role: Role;
+  /** id do perfil (GET /access/roles/{id}) */
+  role: UUID;
   createdAt: ISODate;
   updatedAt: ISODate;
   active: boolean;
@@ -94,7 +106,8 @@ export interface UserResponseSummary {
   id: UUID;
   username: string;
   email?: string;
-  role: Role;
+  /** id do perfil */
+  role: UUID;
   active: boolean;
 }
 export interface UpdateUserRequest {
@@ -428,4 +441,19 @@ export interface NotificationStreamPayload {
 }
 export interface UnreadNotificationsResponse {
   quantity: number;
+}
+
+/* ---------- Access (perfis e permissões) ---------- */
+export interface RoleResponse {
+  id: UUID;
+  name: string;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+export interface PermissionResponse {
+  id: UUID;
+  roleId: UUID;
+  permission: Permission;
+  createdAt: ISODate;
+  updatedAt: ISODate;
 }

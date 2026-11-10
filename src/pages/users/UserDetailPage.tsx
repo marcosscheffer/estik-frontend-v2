@@ -7,18 +7,19 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { usersService } from "@/services/users";
 import { facilitiesService } from "@/services/facilities";
 import { formatDateTime } from "@/lib/format";
-import { roleLabel, roleTone, toOptions } from "@/lib/labels";
-import { access } from "@/lib/roles";
+import { access } from "@/lib/permissions";
+import { prettyRole, useRoles } from "@/hooks/useRoles";
 import { Badge, Button, Card, CardHeader, DetailList, ErrorState, Modal, PageHeader, PageLoader, Select } from "@/components/ui";
 import { FacilitySelect } from "@/components/LookupSelects";
-import type { Role } from "@/types/api";
 
 export function UserDetailPage() {
   const { id = "" } = useParams();
   const { claims, can } = useAuth();
   const isSelf = claims?.sub === id;
-  // papel, unidade e ativação caem no anyRequest -> ADMINISTRATOR
+  // perfil, unidade e ativação: USER_MANAGE (/users/**)
   const isAdmin = can(access.manageUsers);
+  // a lista de perfis vem de /access/roles (ACCESS_MANAGE)
+  const { roles, nameOf, enabled: canSeeRoles } = useRoles();
 
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["users", "detail", id],
@@ -30,7 +31,7 @@ export function UserDetailPage() {
     enabled: !!user?.facilityId,
   });
 
-  const [role, setRole] = useState<Role>("USER");
+  const [role, setRole] = useState("");
   const [facilityId, setFacilityId] = useState("");
   // ativar conta sem unidade pede a unidade antes (o cadastro não pede mais)
   const [activateOpen, setActivateOpen] = useState(false);
@@ -51,7 +52,7 @@ export function UserDetailPage() {
   const assign = useApiMutation({
     mutationFn: () => usersService.assign(id, role),
     invalidate,
-    success: "Papel atualizado",
+    success: "Perfil atualizado. Vale a partir do próximo login da pessoa.",
   });
   const activateWithFacility = useApiMutation({
     mutationFn: async () => {
@@ -110,7 +111,7 @@ export function UserDetailPage() {
             items={[
               { label: "Usuário", value: user.username },
               { label: "E-mail", value: user.email || "—" },
-              { label: "Papel", value: <Badge tone={roleTone[user.role]}>{roleLabel[user.role]}</Badge> },
+              { label: "Perfil", value: canSeeRoles ? <Badge tone="violet">{prettyRole(nameOf(user.role))}</Badge> : "—" },
               { label: "Situação", value: <Badge tone={user.active ? "green" : "amber"}>{user.active ? "Ativo" : "Inativo"}</Badge> },
               { label: "Unidade", value: !user.facilityId ? <Badge tone="amber">Sem unidade</Badge> : facility.data ? `${facility.data.name} (${facility.data.code})` : "—" },
               { label: "Criado em", value: formatDateTime(user.createdAt) },
@@ -123,14 +124,26 @@ export function UserDetailPage() {
             <CardHeader title="Administração" />
             {/* um card só, com seções: menos caixas soltas na tela */}
             <section className="space-y-2 px-5 py-4">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Papel</h3>
-              <div className="flex gap-2">
-                <Select className="flex-1" options={toOptions(roleLabel)} value={role} disabled={isSelf} onChange={(e) => setRole(e.target.value as Role)} />
-                <Button disabled={isSelf || role === user.role} loading={assign.isPending} onClick={() => assign.mutate()}>Salvar</Button>
-              </div>
-              <p className="text-xs text-slate-500">
-                {isSelf ? "Você não pode mudar o próprio papel." : "Administrador > Técnico > Usuário. Técnico atende chamados; administrador também encaminha e gerencia o sistema."}
-              </p>
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Perfil</h3>
+              {canSeeRoles ? (
+                <>
+                  <div className="flex gap-2">
+                    <Select
+                      className="flex-1"
+                      options={roles.map((r) => ({ value: r.id, label: prettyRole(r.name) }))}
+                      value={role}
+                      disabled={isSelf}
+                      onChange={(e) => setRole(e.target.value)}
+                    />
+                    <Button disabled={isSelf || !role || role === user.role} loading={assign.isPending} onClick={() => assign.mutate()}>Salvar</Button>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {isSelf ? "Você não pode mudar o próprio perfil." : "O perfil define o que a pessoa pode fazer. Veja e edite as permissões em Administração > Perfis."}
+                  </p>
+                </>
+              ) : (
+                <p className="text-xs text-slate-500">Para trocar o perfil você precisa da permissão "Perfis e permissões".</p>
+              )}
             </section>
             <section className="space-y-2 border-t border-slate-800 px-5 py-4">
               <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Unidade</h3>

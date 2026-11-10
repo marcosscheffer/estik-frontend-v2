@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ticketsService } from "@/services/tickets";
 import { computersService } from "@/services/computers";
 import { notificationsService } from "@/services/notifications";
-import { access } from "@/lib/roles";
+import { access } from "@/lib/permissions";
 import { accents, type AccentName } from "@/lib/accents";
 import { statusLabel } from "@/lib/labels";
 import { Card, CardGrid, CardHeader, EmptyState } from "@/components/ui";
