@@ -1,3 +1,5 @@
+import { access } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -62,6 +64,9 @@ function ItemModal({ open, onClose, id }: { open: boolean; onClose: () => void; 
 }
 
 export function ItemsPage() {
+  // só quem pode alterar vê os botões de criar/editar (o backend também bloqueia)
+  const { can } = useAuth();
+  const canWrite = can(access.catalogWrite);
   const { filters, page, setFilter, setPage } = useFilters({ name: "", categoryId: "" });
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [view, setView] = useViewMode("items");
@@ -76,7 +81,7 @@ export function ItemsPage() {
   return (
     <>
       <PageHeader title="Itens" description="Catálogo de materiais controlados no estoque."
-        actions={<><ViewToggle value={view} onChange={setView} /><Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Novo item</Button></>} />
+        actions={<><ViewToggle value={view} onChange={setView} />{canWrite && <Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Novo item</Button>}</>} />
       <Card>
         {/* sem filtro por SKU: o parâmetro `code` quebra no backend */}
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 p-4">
@@ -98,7 +103,7 @@ export function ItemsPage() {
                   <h3 className="truncate font-medium text-slate-100">{i.name}</h3>
                   <p className="truncate font-mono text-xs text-slate-500">{i.sku}</p>
                 </div>
-                <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" />
+                {canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" />}
               </Tile>
             )}
           />
@@ -113,7 +118,7 @@ export function ItemsPage() {
               {
                 header: "",
                 className: "text-right",
-                cell: (i) => <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" />,
+                cell: (i) => canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" />,
               },
             ]}
           />

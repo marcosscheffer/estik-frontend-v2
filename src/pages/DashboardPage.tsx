@@ -89,10 +89,14 @@ export function DashboardPage() {
   const isStaff = can(access.receiveTickets);
   const canForward = can(access.forwardTickets);
   const receiver = can(access.receiveTickets);
+  // sem nenhuma permissão de chamado: some tudo de chamados do início
+  const hasTickets = can(access.tickets);
+  const canOpen = can(access.openTickets);
 
   const myTickets = useQuery({
     queryKey: ["tickets", "list", { requesterId: me, page: 0, size: 6 }],
     queryFn: () => ticketsService.list({ requesterId: me, page: 0, size: 6 }),
+    enabled: hasTickets,
   });
   // técnico/admin vê os chamados mais recentes de todos
   const recent = useQuery({
@@ -161,22 +165,22 @@ export function DashboardPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-slate-100">Olá, {claims?.username}</h1>
           <p className="mt-1 text-sm text-slate-500">Um resumo do que está acontecendo.</p>
         </div>
-        <Link
+        {canOpen && <Link
           to="/tickets?new=1"
           className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-500"
         >
           <Plus className="size-4" /> Abrir chamado
-        </Link>
+        </Link>}
       </div>
 
-      <section>
+      {hasTickets && <section>
         <SectionTitle>Seus chamados</SectionTitle>
         <div className={clsx("grid gap-3 sm:grid-cols-2", work.length >= 5 ? "xl:grid-cols-5" : work.length === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3")}>
           {work.map(({ show: _s, ...s }) => (
             <Stat key={s.label} {...s} />
           ))}
         </div>
-      </section>
+      </section>}
 
       <section className={clsx("grid gap-3", isStaff && "lg:grid-cols-3")}>
         {/* status + atalhos de inventário/notificações */}
@@ -218,9 +222,9 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <TicketsByMonthChart />
+      {hasTickets && <TicketsByMonthChart />}
 
-      <Card>
+      {hasTickets && <Card>
         <CardHeader
           title={isStaff ? "Chamados recentes" : "Meus chamados recentes"}
           actions={
@@ -242,7 +246,7 @@ export function DashboardPage() {
           }
           renderCard={(t) => <TicketCard ticket={t} />}
         />
-      </Card>
+      </Card>}
     </div>
   );
 }

@@ -55,7 +55,7 @@ export function ComputerDetailPage() {
         title={pc.name}
         description={[pc.facility?.name, pc.departament?.name].filter(Boolean).join(" · ") || undefined}
         actions={
-          <>
+          can(access.computerWrite) && <>
             <Button variant="secondary" icon={<Pencil className="size-4" />} onClick={() => setModal("edit")}>Editar</Button>
             <Button variant="secondary" icon={<ArrowRightLeft className="size-4" />} onClick={() => setModal("move")}>Mover</Button>
             <Button variant="ghost" icon={<Trash2 className="size-4" />} onClick={() => setModal("delete")} aria-label="Excluir" />

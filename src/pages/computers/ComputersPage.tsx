@@ -1,3 +1,5 @@
+import { access } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -12,6 +14,9 @@ import { DepartamentSelect, FacilitySelect } from "@/components/LookupSelects";
 import { CreateComputerModal } from "./ComputerModals";
 
 export function ComputersPage() {
+  // só quem pode alterar vê os botões de criar/editar (o backend também bloqueia)
+  const { can } = useAuth();
+  const canWrite = can(access.computerWrite);
   const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [view, setView] = useViewMode("computers");
@@ -31,8 +36,8 @@ export function ComputersPage() {
     <EmptyState
       icon={<Monitor className="size-5" />}
       title="Nenhum computador cadastrado"
-      message="Cadastre as máquinas de cada unidade e departamento para acompanhar o inventário."
-      action={<Button size="sm" icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Novo computador</Button>}
+      message={canWrite ? "Cadastre as máquinas de cada unidade e departamento para acompanhar o inventário." : "Ainda não há computadores cadastrados."}
+      action={canWrite ? <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Novo computador</Button> : undefined}
     />
   );
 
@@ -51,7 +56,7 @@ export function ComputersPage() {
         actions={
           <>
             <ViewToggle value={view} onChange={setView} />
-            <Button icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Novo computador</Button>
+            {canWrite && <Button icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Novo computador</Button>}
           </>
         }
       />

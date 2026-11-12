@@ -1,3 +1,5 @@
+import { access } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRightLeft, FilterX, Plus, SearchX } from "lucide-react";
@@ -17,6 +19,9 @@ function placeText(f?: { name: string } | null, d?: { name: string } | null) {
 }
 
 export function MovementsPage() {
+  // só quem pode alterar vê os botões de criar/editar (o backend também bloqueia)
+  const { can } = useAuth();
+  const canWrite = can(access.stockWrite);
   const { filters, page, setFilter, setPage } = useFilters({ facilityId: "", departamentId: "", type: "" });
   const [selected, setSelected] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,7 +52,7 @@ export function MovementsPage() {
       <PageHeader
         title="Movimentações"
         description="Entradas, saídas, ajustes e transferências de estoque."
-        actions={<Button icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Nova movimentação</Button>}
+        actions={canWrite ? <Button icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Nova movimentação</Button> : undefined}
       />
       <Card>
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 p-4">
@@ -78,7 +83,7 @@ export function MovementsPage() {
                   icon={<ArrowRightLeft className="size-5" />}
                   title="Nenhuma movimentação ainda"
                   message="Entradas, saídas, ajustes e transferências aparecem aqui, da mais recente para a mais antiga."
-                  action={<Button size="sm" icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Nova movimentação</Button>}
+                  action={canWrite ? <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setCreateOpen(true)}>Nova movimentação</Button> : undefined}
                 />
               )
             }

@@ -1,3 +1,5 @@
+import { access } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import clsx from "clsx";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
@@ -15,6 +17,9 @@ import { BalanceCard, MinimumTag } from "./BalanceCard";
 import { minimumOf, minimumState } from "@/lib/stock";
 
 export function BalancesPage() {
+  // só quem pode alterar vê os botões de criar/editar (o backend também bloqueia)
+  const { can } = useAuth();
+  const canWrite = can(access.stockWrite);
   const { filters, page, setFilter, setPage } = useFilters({ facilityId: "", departamentId: "", itemId: "" });
   const [selected, setSelected] = useState<StockBalanceSummaryResponse | null>(null);
   const [view, setView] = useViewMode("balances");
@@ -35,7 +40,7 @@ export function BalancesPage() {
       icon={<Boxes className="size-5" />}
       title="Nenhum saldo ainda"
       message="O saldo de cada item por departamento aparece aqui depois da primeira entrada de estoque."
-      action={<Button size="sm" icon={<Plus className="size-4" />} onClick={() => setMovement({ open: true })}>Registrar entrada</Button>}
+      action={canWrite ? <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setMovement({ open: true })}>Registrar entrada</Button> : undefined}
     />
   );
 
@@ -64,7 +69,7 @@ export function BalancesPage() {
         actions={
           <>
             <ViewToggle value={view} onChange={setView} />
-            <Button icon={<Plus className="size-4" />} onClick={() => setMovement({ open: true })}>Nova movimentação</Button>
+            {canWrite && <Button icon={<Plus className="size-4" />} onClick={() => setMovement({ open: true })}>Nova movimentação</Button>}
           </>
         }
       />
@@ -128,7 +133,7 @@ export function BalancesPage() {
         title={selected?.item.name ?? ""}
         description="Detalhe do saldo"
         footer={
-          <Button
+          canWrite && <Button
             icon={<ArrowRightLeft className="size-4" />}
             onClick={() => {
               setMovement({ open: true, from: selected! });

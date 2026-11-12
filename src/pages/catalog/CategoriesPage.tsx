@@ -1,3 +1,5 @@
+import { access } from "@/lib/permissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -49,6 +51,9 @@ function CategoryModal({ open, onClose, id }: { open: boolean; onClose: () => vo
 }
 
 export function CategoriesPage() {
+  // só quem pode alterar vê os botões de criar/editar (o backend também bloqueia)
+  const { can } = useAuth();
+  const canWrite = can(access.catalogWrite);
   const { filters, page, setFilter, setPage } = useFilters({ name: "" });
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [view, setView] = useViewMode("categories");
@@ -63,7 +68,7 @@ export function CategoriesPage() {
   return (
     <>
       <PageHeader title="Categorias" description="Agrupam os itens do estoque."
-        actions={<><ViewToggle value={view} onChange={setView} /><Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Nova categoria</Button></>} />
+        actions={<><ViewToggle value={view} onChange={setView} />{canWrite && <Button icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Nova categoria</Button>}</>} />
       <Card>
         <div className="border-b border-slate-800 p-4">
           <div className="sm:max-w-sm">
@@ -80,7 +85,7 @@ export function CategoriesPage() {
               <Tile className="flex-row items-center">
                 <TileIcon icon={Tag} />
                 <h3 className="min-w-0 flex-1 truncate font-medium text-slate-100">{c.name}</h3>
-                <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" />
+                {canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" />}
               </Tile>
             )}
           />
@@ -94,7 +99,7 @@ export function CategoriesPage() {
               {
                 header: "",
                 className: "text-right",
-                cell: (c) => <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" />,
+                cell: (c) => canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" />,
               },
             ]}
           />

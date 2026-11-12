@@ -10,7 +10,6 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
-  Map as MapIcon,
   Menu,
   Monitor,
   Network,
@@ -60,7 +59,6 @@ const groups: NavGroup[] = [
     title: "Inventário",
     icon: Monitor,
     items: [
-      { to: "/map", label: "Mapa", icon: MapIcon, need: access.computers },
       { to: "/computers", label: "Computadores", icon: Monitor, need: access.computers },
       { to: "/histories", label: "Histórico", icon: History, need: access.histories },
     ],

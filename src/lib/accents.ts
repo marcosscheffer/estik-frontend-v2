@@ -30,7 +30,6 @@ export type AccentName = keyof typeof accents;
 /** Módulo → cor, pelo começo da rota. A mais específica vence. */
 const routeAccents: [string, AccentName][] = [
   ["/tickets", "blue"],
-  ["/map", "teal"],
   ["/computers", "cyan"],
   ["/histories", "cyan"],
   ["/stock", "emerald"],

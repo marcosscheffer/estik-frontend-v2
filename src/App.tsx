@@ -23,7 +23,6 @@ import { UserDetailPage } from "@/pages/users/UserDetailPage";
 import { NotificationsPage } from "@/pages/NotificationsPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
-import { MapPage } from "@/pages/map/MapPage";
 import { RolesPage } from "@/pages/access/RolesPage";
 import { SpecializationsPage } from "@/pages/access/SpecializationsPage";
 
@@ -38,13 +37,14 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
-          <Route path="tickets" element={<TicketsPage />} />
-          <Route path="tickets/:id" element={<TicketDetailPage />} />
+          <Route element={<PermissionRoute need={access.tickets} />}>
+            <Route path="tickets" element={<TicketsPage />} />
+            <Route path="tickets/:id" element={<TicketDetailPage />} />
+          </Route>
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="profile" element={<ProfilePage />} />
 
           <Route element={<PermissionRoute need={access.computers} />}>
-            <Route path="map" element={<MapPage />} />
             <Route path="computers" element={<ComputersPage />} />
             <Route path="computers/:id" element={<ComputerDetailPage />} />
             <Route path="histories" element={<HistoriesPage />} />

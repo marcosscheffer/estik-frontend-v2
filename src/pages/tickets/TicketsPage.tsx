@@ -38,6 +38,7 @@ export function TicketsPage() {
   const isStaff = can(access.receiveTickets);
   const canForward = can(access.forwardTickets);
   const receiver = can(access.receiveTickets);
+  const canOpen = can(access.openTickets);
   // só quem gerencia (TICKET_MANAGE) escolhe a área; supervisor para baixo fica preso na área dele (vem no token)
   const canPickArea = can("TICKET_MANAGE");
   const myArea = claims?.specializationId;
@@ -54,11 +55,11 @@ export function TicketsPage() {
   // /tickets?new=1 abre o formulário direto (link do dashboard).
   useEffect(() => {
     if (params.get("new")) {
-      setFormOpen(true);
+      if (canOpen) setFormOpen(true);
       params.delete("new");
       setParams(params, { replace: true });
     }
-  }, [params, setParams]);
+  }, [params, setParams, canOpen]);
 
   const tabs: { key: Scope; label: string; count?: number }[] = [
     ...(isStaff ? [{ key: "all" as const, label: "Todos" }] : []),
@@ -126,7 +127,7 @@ export function TicketsPage() {
     <EmptyState
       icon={<Inbox className="size-5" />}
       {...emptyByScope[scope]}
-      action={scope === "mine" ? <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setFormOpen(true)}>Abrir chamado</Button> : undefined}
+      action={scope === "mine" && canOpen ? <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setFormOpen(true)}>Abrir chamado</Button> : undefined}
     />
   );
 
@@ -146,9 +147,11 @@ export function TicketsPage() {
         actions={
           <>
             <ViewToggle value={view} onChange={setView} />
-            <Button icon={<Plus className="size-4" />} onClick={() => setFormOpen(true)}>
-              Abrir chamado
-            </Button>
+            {canOpen && (
+              <Button icon={<Plus className="size-4" />} onClick={() => setFormOpen(true)}>
+                Abrir chamado
+              </Button>
+            )}
           </>
         }
       />
