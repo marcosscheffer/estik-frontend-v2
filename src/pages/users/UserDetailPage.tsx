@@ -38,13 +38,16 @@ export function UserDetailPage() {
   // ativar conta sem unidade pede a unidade antes (o cadastro não pede mais)
   const [activateOpen, setActivateOpen] = useState(false);
   const [activateFacility, setActivateFacility] = useState("");
+  // preenche com o que está salvo; só reseta quando o usuário muda de verdade (outro id ou salvou),
+  // e não a cada refetch em segundo plano, que apagaria o que está sendo editado
   useEffect(() => {
     if (user) {
       setRole(user.role?.id ?? "");
       setFacilityId(user.facilityId ?? "");
       setSpecializationId(user.specialization?.id ?? "");
     }
-  }, [user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.updatedAt, user?.role?.id, user?.facilityId, user?.specialization?.id]);
 
   const invalidate = [["users"], ["me"]];
   const toggle = useApiMutation({
@@ -145,7 +148,10 @@ export function UserDetailPage() {
               {canAssign ? (
                 <div className="space-y-1">
                   <Select
+                    // remonta quando a lista chega, para o select mostrar o valor certo
+                    key={roles.length}
                     label="Perfil"
+                    placeholder="Sem perfil"
                     options={roles.map((r) => ({ value: r.id, label: prettyRole(r.name) }))}
                     value={role}
                     disabled={isSelf}
@@ -160,7 +166,7 @@ export function UserDetailPage() {
               )}
               {isAdmin && (
                 <div className="space-y-1">
-                  <FacilitySelect label="Unidade" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} />
+                  <FacilitySelect label="Unidade" placeholder="Sem unidade" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} />
                   {!user.facilityId && <p className="text-xs text-amber-300">Esta conta ainda não tem unidade.</p>}
                 </div>
               )}

@@ -16,7 +16,7 @@ export const FacilitySelect = forwardRef<HTMLSelectElement, BaseProps>(function 
 ) {
   const { data = [], isLoading } = useFacilityOptions();
   return (
-    <Select ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
+    <Select key={isLoading ? "loading" : "ready"} ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
   );
 });
 
@@ -24,7 +24,7 @@ export const DepartamentSelect = forwardRef<HTMLSelectElement, BaseProps & { fac
   function DepartamentSelect({ facilityId, placeholder = "Selecione o departamento", ...props }, ref) {
     const { data = [], isLoading } = useDepartamentOptions(facilityId || undefined);
     return (
-      <Select ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
+      <Select key={isLoading ? "loading" : "ready"} ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
     );
   },
 );
@@ -35,7 +35,7 @@ export const CategorySelect = forwardRef<HTMLSelectElement, BaseProps>(function 
 ) {
   const { data = [], isLoading } = useCategoryOptions();
   return (
-    <Select ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
+    <Select key={isLoading ? "loading" : "ready"} ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
   );
 });
 
@@ -45,7 +45,7 @@ export const ItemSelect = forwardRef<HTMLSelectElement, BaseProps>(function Item
 ) {
   const { data = [], isLoading } = useItemOptions();
   return (
-    <Select ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
+    <Select key={isLoading ? "loading" : "ready"} ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
   );
 });
 
@@ -55,6 +55,6 @@ export const SpecializationSelect = forwardRef<HTMLSelectElement, BaseProps>(fun
 ) {
   const { data = [], isLoading } = useSpecializationOptions();
   return (
-    <Select ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
+    <Select key={isLoading ? "loading" : "ready"} ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
   );
 });
