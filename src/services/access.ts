@@ -2,7 +2,7 @@ import { api } from "@/lib/api";
 import { cleanParams } from "@/lib/format";
 import type { PageParams, PageResult, Permission, PermissionResponse, RoleResponse, UUID } from "@/types/api";
 
-/** /access/** exige ACCESS_MANAGE. */
+/** /access/** exige SYSTEM_MANAGE. */
 export const accessService = {
   roles: (params: PageParams = {}) =>
     api.get<PageResult<RoleResponse>>("/access/roles", { params: cleanParams(params) }).then((r) => r.data),

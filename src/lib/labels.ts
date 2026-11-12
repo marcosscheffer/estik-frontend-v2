@@ -5,7 +5,6 @@ import type {
   StorageType,
   TicketPriority,
   TicketStatus,
-  TicketType,
 } from "@/types/api";
 import { describeNotification, notificationRefId, type NotificationRef } from "@/lib/notifications";
 
@@ -49,10 +48,10 @@ export const priorityTone: Record<TicketPriority, Tone> = {
   URGENT: "red",
 };
 
-export const ticketTypeLabel: Record<TicketType, string> = {
-  IT: "TI",
-  MAINTENANCE: "Manutenção",
-};
+/** Nome da área (especialização) do chamado; "Sem área" quando vem vazia. */
+export function specializationName(s?: { name: string } | null): string {
+  return s?.name || "Sem área";
+}
 
 export const osLabel: Record<OsType, string> = { WINDOWS: "Windows", UBUNTU: "Ubuntu" };
 export const storageTypeLabel: Record<StorageType, string> = { NVME: "NVMe", SSD: "SSD", HDD: "HDD" };

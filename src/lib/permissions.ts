@@ -11,9 +11,22 @@ import type { Permission } from "@/types/api";
 export const IMPLIED: Partial<Record<Permission, Permission[]>> = {
   TICKET_WORK: ["TICKET_OPEN"],
   TICKET_SUPERVISOR: ["TICKET_OPEN", "TICKET_WORK"],
-  TICKET_MANAGE: ["TICKET_OPEN", "TICKET_WORK"],
+  TICKET_MANAGE: ["TICKET_OPEN", "TICKET_WORK", "TICKET_SUPERVISOR"],
   STOCK_MANAGE: ["STOCK_READ"],
   COMPUTER_MANAGE: ["COMPUTER_READ"],
+  // perfil de sistema = acesso total
+  SYSTEM_MANAGE: [
+    "TICKET_OPEN",
+    "TICKET_WORK",
+    "TICKET_SUPERVISOR",
+    "TICKET_MANAGE",
+    "STOCK_READ",
+    "STOCK_MANAGE",
+    "COMPUTER_READ",
+    "COMPUTER_MANAGE",
+    "FACILITY_MANAGE",
+    "USER_MANAGE",
+  ],
 };
 
 /** Mesmo que PermissionEnum.expand(): as marcadas + as que elas incluem. */
@@ -50,12 +63,12 @@ export const PERMISSION_GROUPS: { title: string; items: PermissionItem[] }[] = [
       {
         value: "TICKET_SUPERVISOR",
         label: "Supervisionar chamados",
-        hint: "Igual a Gerenciar chamados, mas só nos chamados da especialização dele: encaminha, apaga e lê a conversa. Inclui Atender e Abrir chamados.",
+        hint: "Vê e encaminha os chamados da área (especialização) dele, além dos próprios; apaga e lê a conversa deles. Inclui Atender e Abrir chamados.",
       },
       {
         value: "TICKET_MANAGE",
         label: "Gerenciar chamados",
-        hint: "Tudo de Atender e Abrir chamados, e também encaminha para um técnico, apaga e lê a conversa de qualquer chamado, de todas as especializações (só lê: envia apenas quem participa).",
+        hint: "Tudo de Supervisionar, Atender e Abrir chamados, mas em todas as áreas: vê, encaminha, apaga e lê a conversa de qualquer chamado (só lê: envia apenas quem participa).",
       },
     ],
   },
@@ -100,13 +113,12 @@ export const PERMISSION_GROUPS: { title: string; items: PermissionItem[] }[] = [
       {
         value: "USER_MANAGE",
         label: "Usuários",
-        hint: "Lista usuários, ativa, desativa, muda o perfil e a unidade. Editar os próprios dados não precisa desta permissão.",
+        hint: "Lista usuários, ativa, desativa e muda a unidade. Trocar o perfil exige Sistema. Editar os próprios dados não precisa desta permissão.",
       },
       {
-        value: "ACCESS_MANAGE",
-        label: "Perfis e permissões",
-        hint: "Cria e apaga perfis e liga ou desliga as permissões de cada um.",
-        note: "É acesso total na prática: quem tem pode dar a si mesmo qualquer outra permissão.",
+        value: "SYSTEM_MANAGE",
+        label: "Sistema (perfis e áreas)",
+        hint: "Acesso total: inclui todas as outras permissões. Também cria e apaga perfis e áreas, liga ou desliga as permissões de cada perfil e troca o perfil dos usuários.",
       },
     ],
   },
@@ -147,9 +159,15 @@ export const access = {
   departaments: "FACILITY_MANAGE",
   users: "USER_MANAGE",
   manageUsers: "USER_MANAGE",
-  roles: "ACCESS_MANAGE",
+  roles: "SYSTEM_MANAGE",
+  // criar e apagar áreas (GET /specializations é para qualquer logado)
+  specializations: "SYSTEM_MANAGE",
+  // POST /users/{id}/assign
+  assignRole: "SYSTEM_MANAGE",
+  // GET /users: quem encaminha também lista usuários
+  listUsers: ["USER_MANAGE", "TICKET_SUPERVISOR", "TICKET_MANAGE"],
   // triagem e encaminhamento
-  // supervisor: só da especialização dele (o backend filtra); gerente: todos
+  // supervisor: vê os chamados da área dele (o backend filtra); gerente: todos
   forwardTickets: ["TICKET_SUPERVISOR", "TICKET_MANAGE"],
   // pode receber encaminhamento, assumir e resolver
   receiveTickets: "TICKET_WORK",

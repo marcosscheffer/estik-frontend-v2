@@ -95,8 +95,9 @@ export function RolesPage() {
 }
 
 function RoleEditor({ role, onDeleted }: { role: RoleResponse; onDeleted: () => void }) {
-  const { claims } = useAuth();
-  const isMine = claims?.role === role.id;
+  // o token não traz mais o perfil: usa o GET /users/me
+  const { me } = useAuth();
+  const isMine = me?.role?.id === role.id;
   const [confirmDelete, setConfirmDelete] = useState(false);
   const key = ["access", "permissions", role.id];
 
@@ -150,7 +151,7 @@ function RoleEditor({ role, onDeleted }: { role: RoleResponse; onDeleted: () => 
                   const via = marked ? undefined : impliedBy(it.value, granted);
                   const on = marked || !!via;
                   // não deixa o próprio perfil perder o acesso a esta tela
-                  const lockSelf = isMine && marked && it.value === "ACCESS_MANAGE";
+                  const lockSelf = isMine && marked && it.value === "SYSTEM_MANAGE";
                   const saving = toggle.isPending && toggle.variables === it.value;
                   return (
                     <button

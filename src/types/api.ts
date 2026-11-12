@@ -15,10 +15,9 @@ export type Permission =
   | "COMPUTER_MANAGE"
   | "FACILITY_MANAGE"
   | "USER_MANAGE"
-  | "ACCESS_MANAGE";
+  | "SYSTEM_MANAGE";
 export type TicketStatus = "OPEN" | "FORWARDED" | "PROGRESS" | "CANCELLED" | "RESOLVED";
 export type TicketPriority = "MILD" | "MODERATE" | "URGENT";
-export type TicketType = "IT" | "MAINTENANCE";
 export type OsType = "UBUNTU" | "WINDOWS";
 export type StorageType = "NVME" | "SSD" | "HDD";
 export type Direction = "RECEIVED" | "SENT" | "NONE";
@@ -90,14 +89,26 @@ export interface UserAuthResponse {
 }
 
 /* ---------- Users ---------- */
+/** Área resumida que vem junto do usuário. */
+export interface UserSpecializationSummary {
+  id: UUID;
+  name: string;
+}
+/** Perfil resumido que vem junto do usuário. */
+export interface UserRoleSummary {
+  id: UUID;
+  name: string;
+}
 export interface UserResponse {
   id: UUID;
   username: string;
   email?: string;
   /** Pode vir vazio até o administrador definir a unidade. */
   facilityId?: UUID | null;
-  /** id do perfil (GET /access/roles/{id}) */
-  role: UUID;
+  /** perfil do usuário (pode vir null se a conta ainda não tiver perfil) */
+  role?: UserRoleSummary | null;
+  /** área do usuário (POST /users/{id}/specialization); null = sem área */
+  specialization?: UserSpecializationSummary | null;
   createdAt: ISODate;
   updatedAt: ISODate;
   active: boolean;
@@ -106,8 +117,8 @@ export interface UserResponseSummary {
   id: UUID;
   username: string;
   email?: string;
-  /** id do perfil */
-  role: UUID;
+  role?: UserRoleSummary | null;
+  specialization?: UserSpecializationSummary | null;
   active: boolean;
 }
 export interface UpdateUserRequest {
@@ -212,6 +223,15 @@ export interface ComputerHistoryResponse extends ComputerHistorySummaryResponse 
   createdAt: ISODate;
 }
 
+/* ---------- Specializations (áreas de atendimento) ---------- */
+export interface SpecializationSummary {
+  id: UUID;
+  name: string;
+}
+export interface SpecializationResponse extends SpecializationSummary {
+  createdAt: ISODate;
+}
+
 /* ---------- Tickets ---------- */
 export interface TicketUserResponse {
   id: UUID;
@@ -221,7 +241,8 @@ export interface TicketSummaryResponse {
   id: UUID;
   facility: RefSummary;
   title: string;
-  ticketType: TicketType;
+  /** área do chamado (antes era o enum ticketType) */
+  specialization?: SpecializationSummary | null;
   priority: TicketPriority;
   status: TicketStatus;
   createdAt: ISODate;
@@ -237,7 +258,7 @@ export interface TicketResponse {
   /** Quem encaminhou. */
   regulator?: TicketUserResponse | null;
   assignee?: TicketUserResponse | null;
-  ticketType: TicketType;
+  specialization?: SpecializationSummary | null;
   title: string;
   description?: string;
   status: TicketStatus;
@@ -249,15 +270,15 @@ export interface CreateTicketRequest {
   title: string;
   description?: string;
   facilityId: UUID;
-  ticketType: TicketType;
+  specializationId: UUID;
   priority: TicketPriority;
 }
 export interface UpdateTicketRequest {
   title: string;
   description: string;
-  ticketType: TicketType;
+  specializationId: UUID;
 }
-/** POST /tickets/{id}/forward — userId precisa ser TECHNICIAN ou ADMINISTRATOR (e não o solicitante). */
+/** POST /tickets/{id}/forward — o perfil do userId precisa ter TICKET_WORK, TICKET_SUPERVISOR ou TICKET_MANAGE. */
 export interface ForwardTicketRequest {
   userId: UUID;
   priority: TicketPriority;
@@ -265,7 +286,6 @@ export interface ForwardTicketRequest {
 export interface TicketHistoryResponse {
   id: UUID;
   status: TicketStatus;
-  type: TicketType;
   createdAt: ISODate;
 }
 

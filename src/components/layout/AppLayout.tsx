@@ -16,16 +16,18 @@ import {
   Network,
   Package,
   Repeat,
+  Settings,
   ShieldCheck,
   Tags,
   Ticket,
   UserCircle,
   Users,
   X,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { access, type Need } from "@/lib/permissions";
-import { prettyRole, useRoles } from "@/hooks/useRoles";
+import { prettyRole } from "@/hooks/useRoles";
 import { accentFor } from "@/lib/accents";
 import { NotificationBell } from "./NotificationBell";
 
@@ -80,7 +82,15 @@ const groups: NavGroup[] = [
       { to: "/facilities", label: "Unidades", icon: Building2, need: access.facilities },
       { to: "/departaments", label: "Departamentos", icon: Network, need: access.departaments },
       { to: "/users", label: "Usuários", icon: Users, need: access.users },
+    ],
+  },
+  {
+    // configurações do sistema (SYSTEM_MANAGE): quem pode fazer o quê e as áreas de atendimento
+    title: "Sistema",
+    icon: Settings,
+    items: [
       { to: "/roles", label: "Perfis", icon: KeyRound, need: access.roles },
+      { to: "/specializations", label: "Áreas", icon: Layers, need: access.specializations },
     ],
   },
 ];
@@ -223,8 +233,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function AppLayout() {
-  const { claims, logout } = useAuth();
-  const { nameOf, enabled: showRole } = useRoles();
+  const { claims, me, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -269,7 +278,7 @@ export function AppLayout() {
             <UserCircle className="size-6 text-slate-400" />
             <span className="hidden text-left leading-tight sm:block">
               <span className="block font-medium text-slate-200">{claims?.username}</span>
-              {showRole && <span className="block text-xs text-slate-500">{prettyRole(nameOf(claims?.role))}</span>}
+              {me?.role && <span className="block text-xs text-slate-500">{prettyRole(me.role.name)}</span>}
             </span>
           </NavLink>
           <button

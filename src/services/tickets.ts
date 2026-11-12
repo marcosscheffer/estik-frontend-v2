@@ -10,7 +10,6 @@ import type {
   TicketResponse,
   TicketStatus,
   TicketSummaryResponse,
-  TicketType,
   UpdateTicketRequest,
   UUID,
 } from "@/types/api";
@@ -19,18 +18,17 @@ export interface TicketFilters extends PageParams {
   title?: string;
   status?: TicketStatus;
   priority?: TicketPriority;
-  type?: TicketType;
+  /** área (GET /tickets?specializationId=) */
+  specializationId?: UUID;
   facilityId?: UUID;
   requesterId?: UUID;
   regulatorId?: UUID;
   forwardedId?: UUID;
-  // não mandar `forwarded`: o backend quebra com esse filtro
   assigneeId?: UUID;
 }
 
 export interface TicketHistoryFilters extends PageParams {
   status?: TicketStatus;
-  type?: TicketType;
 }
 
 export type TicketAction = "assume" | "resolve" | "reopen" | "cancel";

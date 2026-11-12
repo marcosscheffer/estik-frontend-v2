@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { facilitiesService } from "@/services/facilities";
 import { departamentsService } from "@/services/departaments";
 import { categoriesService, itemsService } from "@/services/catalog";
+import { specializationsService } from "@/services/specializations";
 
 // Listas usadas nos <select> dos formulários e filtros.
 const LOOKUP_SIZE = 100;
@@ -41,5 +42,17 @@ export function useItemOptions() {
     queryFn: () => itemsService.list({ size: LOOKUP_SIZE }),
     select: (d) => d.items.map((i) => ({ value: i.id, label: `${i.name} · ${i.sku}` })),
     staleTime,
+  });
+}
+
+/** Áreas (especializações). GET /specializations é liberado para qualquer logado. */
+export function useSpecializationOptions(enabled = true) {
+  return useQuery({
+    queryKey: ["lookup", "specializations"],
+    queryFn: () => specializationsService.list({ size: LOOKUP_SIZE }),
+    select: (d) =>
+      [...d.items].sort((a, b) => a.name.localeCompare(b.name)).map((s) => ({ value: s.id, label: s.name })),
+    staleTime,
+    enabled,
   });
 }

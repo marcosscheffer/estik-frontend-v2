@@ -25,6 +25,7 @@ import { ProfilePage } from "@/pages/ProfilePage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { MapPage } from "@/pages/map/MapPage";
 import { RolesPage } from "@/pages/access/RolesPage";
+import { SpecializationsPage } from "@/pages/access/SpecializationsPage";
 
 export default function App() {
   return (
@@ -72,6 +73,10 @@ export default function App() {
           <Route element={<PermissionRoute need={access.roles} />}>
             <Route path="roles" element={<RolesPage />} />
             <Route path="roles/:id" element={<RolesPage />} />
+          </Route>
+
+          <Route element={<PermissionRoute need={access.specializations} />}>
+            <Route path="specializations" element={<SpecializationsPage />} />
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

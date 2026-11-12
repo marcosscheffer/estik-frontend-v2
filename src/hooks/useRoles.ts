@@ -7,7 +7,8 @@ import type { Permission, RoleResponse, UUID } from "@/types/api";
 
 /**
  * Perfis cadastrados (GET /access/roles). Só carrega para quem tem
- * ACCESS_MANAGE; para os outros `data` fica vazio e as telas mostram "—".
+ * SYSTEM_MANAGE; para os outros `data` fica vazio. O nome do perfil de cada
+ * usuário já vem no próprio UserResponse (role.name).
  */
 export function useRoles() {
   const { can } = useAuth();
@@ -37,7 +38,7 @@ export function prettyRole(name: string | undefined): string {
 
 /**
  * Ids dos perfis que têm uma das permissões (ex.: quem pode receber
- * encaminhamento), contando as permissões incluídas. Undefined quando não dá para saber (sem ACCESS_MANAGE).
+ * encaminhamento), contando as permissões incluídas. Undefined quando não dá para saber (sem SYSTEM_MANAGE).
  */
 export function useRoleIdsWith(perms: readonly Permission[], enabledFlag = true) {
   const { roles, enabled } = useRoles();

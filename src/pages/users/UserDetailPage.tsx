@@ -10,16 +10,17 @@ import { formatDateTime } from "@/lib/format";
 import { access } from "@/lib/permissions";
 import { prettyRole, useRoles } from "@/hooks/useRoles";
 import { Badge, Button, Card, CardHeader, DetailList, ErrorState, Modal, PageHeader, PageLoader, Select } from "@/components/ui";
-import { FacilitySelect } from "@/components/LookupSelects";
+import { FacilitySelect, SpecializationSelect } from "@/components/LookupSelects";
 
 export function UserDetailPage() {
   const { id = "" } = useParams();
   const { claims, can } = useAuth();
   const isSelf = claims?.sub === id;
-  // perfil, unidade e ativação: USER_MANAGE (/users/**)
+  // unidade e ativação: USER_MANAGE (/users/**)
   const isAdmin = can(access.manageUsers);
-  // a lista de perfis vem de /access/roles (ACCESS_MANAGE)
-  const { roles, nameOf, enabled: canSeeRoles } = useRoles();
+  // trocar o perfil (POST /users/{id}/assign) e listar perfis (/access/roles): SYSTEM_MANAGE
+  const canAssign = can(access.assignRole);
+  const { roles } = useRoles();
 
   const { data: user, isLoading, error } = useQuery({
     queryKey: ["users", "detail", id],
@@ -33,13 +34,15 @@ export function UserDetailPage() {
 
   const [role, setRole] = useState("");
   const [facilityId, setFacilityId] = useState("");
+  const [specializationId, setSpecializationId] = useState("");
   // ativar conta sem unidade pede a unidade antes (o cadastro não pede mais)
   const [activateOpen, setActivateOpen] = useState(false);
   const [activateFacility, setActivateFacility] = useState("");
   useEffect(() => {
     if (user) {
-      setRole(user.role);
+      setRole(user.role?.id ?? "");
       setFacilityId(user.facilityId ?? "");
+      setSpecializationId(user.specialization?.id ?? "");
     }
   }, [user]);
 
@@ -48,11 +51,6 @@ export function UserDetailPage() {
     mutationFn: () => (user!.active ? usersService.deactivate(id) : usersService.activate(id)),
     invalidate,
     success: (u) => (u.active ? "Usuário ativado" : "Usuário desativado"),
-  });
-  const assign = useApiMutation({
-    mutationFn: () => usersService.assign(id, role),
-    invalidate,
-    success: "Perfil atualizado. Vale a partir do próximo login da pessoa.",
   });
   const activateWithFacility = useApiMutation({
     mutationFn: async () => {
@@ -63,11 +61,30 @@ export function UserDetailPage() {
     success: "Conta ativada e unidade definida",
     onSuccess: () => setActivateOpen(false),
   });
-  const move = useApiMutation({
-    mutationFn: () => usersService.changeFacility(id, facilityId),
+  // o que mudou em relação ao que veio do backend (cada campo tem seu endpoint)
+  const roleChanged = canAssign && !isSelf && !!role && role !== (user?.role?.id ?? "");
+  const facilityChanged = isAdmin && !!facilityId && facilityId !== (user?.facilityId ?? "");
+  const areaChanged = isAdmin && specializationId !== (user?.specialization?.id ?? "");
+  const dirty = roleChanged || facilityChanged || areaChanged;
+
+  /** Um botão só: chama, em sequência, só os endpoints dos campos alterados. */
+  const save = useApiMutation({
+    mutationFn: async () => {
+      if (roleChanged) await usersService.assign(id, role);
+      if (facilityChanged) await usersService.changeFacility(id, facilityId);
+      if (areaChanged) await usersService.changeSpecialization(id, specializationId || null);
+    },
     invalidate: [...invalidate, ["facilities"]],
-    success: "Unidade atualizada",
+    success: () =>
+      roleChanged || areaChanged
+        ? "Alterações salvas. Perfil e área valem a partir do próximo login da pessoa."
+        : "Alterações salvas",
   });
+  const discard = () => {
+    setRole(user?.role?.id ?? "");
+    setFacilityId(user?.facilityId ?? "");
+    setSpecializationId(user?.specialization?.id ?? "");
+  };
 
   if (isLoading) return <PageLoader />;
   if (error || !user) return <ErrorState error={error} />;
@@ -111,7 +128,8 @@ export function UserDetailPage() {
             items={[
               { label: "Usuário", value: user.username },
               { label: "E-mail", value: user.email || "—" },
-              { label: "Perfil", value: canSeeRoles ? <Badge tone="violet">{prettyRole(nameOf(user.role))}</Badge> : "—" },
+              { label: "Perfil", value: <Badge tone="violet">{prettyRole(user.role?.name)}</Badge> },
+              { label: "Área", value: user.specialization ? <Badge>{user.specialization.name}</Badge> : <Badge tone="gray">Sem área</Badge> },
               { label: "Situação", value: <Badge tone={user.active ? "green" : "amber"}>{user.active ? "Ativo" : "Inativo"}</Badge> },
               { label: "Unidade", value: !user.facilityId ? <Badge tone="amber">Sem unidade</Badge> : facility.data ? `${facility.data.name} (${facility.data.code})` : "—" },
               { label: "Criado em", value: formatDateTime(user.createdAt) },
@@ -119,40 +137,55 @@ export function UserDetailPage() {
           />
         </Card>
 
-        {isAdmin && (
+        {(isAdmin || canAssign) && (
           <Card>
             <CardHeader title="Administração" />
-            {/* um card só, com seções: menos caixas soltas na tela */}
-            <section className="space-y-2 px-5 py-4">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Perfil</h3>
-              {canSeeRoles ? (
-                <>
-                  <div className="flex gap-2">
-                    <Select
-                      className="flex-1"
-                      options={roles.map((r) => ({ value: r.id, label: prettyRole(r.name) }))}
-                      value={role}
-                      disabled={isSelf}
-                      onChange={(e) => setRole(e.target.value)}
-                    />
-                    <Button disabled={isSelf || !role || role === user.role} loading={assign.isPending} onClick={() => assign.mutate()}>Salvar</Button>
-                  </div>
+            {/* um card só com os três campos e um único Salvar no fim */}
+            <div className="space-y-4 px-5 py-4">
+              {canAssign ? (
+                <div className="space-y-1">
+                  <Select
+                    label="Perfil"
+                    options={roles.map((r) => ({ value: r.id, label: prettyRole(r.name) }))}
+                    value={role}
+                    disabled={isSelf}
+                    onChange={(e) => setRole(e.target.value)}
+                  />
                   <p className="text-xs text-slate-500">
-                    {isSelf ? "Você não pode mudar o próprio perfil." : "O perfil define o que a pessoa pode fazer. Veja e edite as permissões em Administração > Perfis."}
+                    {isSelf ? "Você não pode mudar o próprio perfil." : "Define o que a pessoa pode fazer (permissões em Sistema > Perfis)."}
                   </p>
-                </>
+                </div>
               ) : (
-                <p className="text-xs text-slate-500">Para trocar o perfil você precisa da permissão "Perfis e permissões".</p>
+                <p className="text-xs text-slate-500">Para trocar o perfil você precisa da permissão "Sistema (perfis e áreas)".</p>
               )}
-            </section>
-            <section className="space-y-2 border-t border-slate-800 px-5 py-4">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Unidade</h3>
-              <div className="flex gap-2">
-                <FacilitySelect className="flex-1" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} />
-                <Button disabled={!facilityId || facilityId === user.facilityId} loading={move.isPending} onClick={() => move.mutate()}>Salvar</Button>
-              </div>
-              {!user.facilityId && <p className="text-xs text-amber-300">Esta conta ainda não tem unidade.</p>}
-            </section>
+              {isAdmin && (
+                <div className="space-y-1">
+                  <FacilitySelect label="Unidade" value={facilityId} onChange={(e) => setFacilityId(e.target.value)} />
+                  {!user.facilityId && <p className="text-xs text-amber-300">Esta conta ainda não tem unidade.</p>}
+                </div>
+              )}
+              {isAdmin && (
+                <div className="space-y-1">
+                  <SpecializationSelect
+                    label="Área"
+                    placeholder="Sem área"
+                    value={specializationId}
+                    onChange={(e) => setSpecializationId(e.target.value)}
+                  />
+                  <p className="text-xs text-slate-500">
+                    Define quais chamados a pessoa vê como supervisor e em quais encaminhamentos ela aparece.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-800 px-5 py-3">
+              <Button variant="secondary" disabled={!dirty || save.isPending} onClick={discard}>
+                Descartar
+              </Button>
+              <Button disabled={!dirty} loading={save.isPending} onClick={() => save.mutate()}>
+                Salvar alterações
+              </Button>
+            </div>
           </Card>
         )}
       </div>

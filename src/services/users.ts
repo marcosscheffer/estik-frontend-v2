@@ -13,6 +13,8 @@ import type {
 export interface UserFilters extends PageParams {
   username?: string;
   facilityId?: UUID;
+  roleId?: UUID;
+  specializationId?: UUID;
 }
 
 export const usersService = {
@@ -28,9 +30,12 @@ export const usersService = {
     api.put<UserResponse>(`/users/${id}`, body).then((r) => r.data),
   activate: (id: UUID) => api.post<UserResponse>(`/users/${id}/activate`).then((r) => r.data),
   deactivate: (id: UUID) => api.post<UserResponse>(`/users/${id}/deactivate`).then((r) => r.data),
-  /** troca o perfil: o body leva o id do perfil no campo "role" */
+  /** troca o perfil (SYSTEM_MANAGE): o body leva o id do perfil no campo "role" */
   assign: (id: UUID, roleId: UUID) =>
     api.post<UserResponse>(`/users/${id}/assign`, { role: roleId }).then((r) => r.data),
+  /** troca a área (USER_MANAGE); null tira a área. Vale no token a partir do próximo login. */
+  changeSpecialization: (id: UUID, specializationId: UUID | null) =>
+    api.post<UserResponse>(`/users/${id}/specialization`, { specializationId }).then((r) => r.data),
   changeFacility: (id: UUID, facilityId: UUID) =>
     api.post<UserResponse>(`/users/${id}/facility`, { facilityId }).then((r) => r.data),
 };

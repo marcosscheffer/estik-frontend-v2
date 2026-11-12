@@ -8,8 +8,8 @@ const REFRESH_KEY = "estik.refreshToken";
 export interface AccessClaims {
   sub: UUID;
   username: string;
-  /** id do perfil */
-  role?: UUID;
+  /** área (especialização) do usuário; some do token quando é null */
+  specializationId?: UUID;
   /** o filtro do backend transforma cada uma em authority */
   permissions?: Permission[];
   type: "access" | "refresh";

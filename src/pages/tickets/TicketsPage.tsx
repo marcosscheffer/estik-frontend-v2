@@ -8,18 +8,18 @@ import { useFilters } from "@/hooks/useFilters";
 import { ticketsService, type TicketFilters } from "@/services/tickets";
 import { access } from "@/lib/permissions";
 import { formatDateTime, formatRelative } from "@/lib/format";
-import { priorityLabel, priorityTone, statusLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
+import { priorityLabel, priorityTone, specializationName, statusLabel, toOptions } from "@/lib/labels";
 import { useViewMode } from "@/hooks/useViewMode";
 import { Badge, Button, Card, CardGrid, EmptyState, ErrorState, PageHeader, Pagination, SearchInput, Select, StatusPill, Table, Tabs, ViewToggle } from "@/components/ui";
-import { FacilitySelect } from "@/components/LookupSelects";
+import { FacilitySelect, SpecializationSelect } from "@/components/LookupSelects";
 import { TicketFormModal } from "./TicketFormModal";
 import { TicketCard } from "./TicketCard";
-import type { TicketPriority, TicketStatus, TicketType } from "@/types/api";
+import type { TicketPriority, TicketStatus } from "@/types/api";
 
 /**
  * Abas da lista. Cada uma vira um filtro do GET /tickets:
  * - mine: requesterId = eu
- * - triage: status OPEN (ainda não encaminhado), de todas as áreas (dá para filtrar pela área)
+ * - triage: status OPEN (ainda não encaminhado). O backend já limita: supervisor vê a área dele, gerente vê todas
  * - forwarded: forwardedId = eu (para assumir)
  * - assigned: assigneeId = eu (em atendimento)
  * - sent: regulatorId = eu (que eu encaminhei)
@@ -38,13 +38,16 @@ export function TicketsPage() {
   const isStaff = can(access.receiveTickets);
   const canForward = can(access.forwardTickets);
   const receiver = can(access.receiveTickets);
+  // só quem gerencia (TICKET_MANAGE) escolhe a área; supervisor para baixo fica preso na área dele (vem no token)
+  const canPickArea = can("TICKET_MANAGE");
+  const myArea = claims?.specializationId;
 
   const { filters, page, setFilter, setPage } = useFilters({
     scope: "",
     title: "",
     status: "",
     priority: "",
-    type: "",
+    specializationId: "",
     facilityId: "",
   });
 
@@ -77,7 +80,8 @@ export function TicketsPage() {
     title: filters.title || undefined,
     status: scope === "triage" ? "OPEN" : (filters.status as TicketStatus) || undefined,
     priority: (filters.priority as TicketPriority) || undefined,
-    type: (filters.type as TicketType) || undefined,
+    // "Meus chamados" não trava a área: a pessoa pode ter aberto chamado para outra área
+    specializationId: canPickArea ? filters.specializationId || undefined : scope === "mine" ? undefined : myArea,
     facilityId: filters.facilityId || undefined,
     ...(scope === "mine" ? { requesterId: me } : {}),
     ...(scope === "forwarded" ? { forwardedId: me } : {}),
@@ -95,7 +99,7 @@ export function TicketsPage() {
   // total só na aba aberta (vem da própria busca; contar as outras exigiria mais requisições)
   const tabsWithCount = tabs.map((t) => (t.key === scope && data ? { ...t, count: data.totalItems } : t));
 
-  const hasFilters = !!(filters.title || filters.priority || filters.type || filters.facilityId || (scope !== "triage" && filters.status));
+  const hasFilters = !!(filters.title || filters.priority || (canPickArea && filters.specializationId) || filters.facilityId || (scope !== "triage" && filters.status));
   const clearFilters = () => {
     const next = new URLSearchParams();
     if (filters.scope) next.set("scope", filters.scope);
@@ -166,7 +170,19 @@ export function TicketsPage() {
             onChange={(e) => setFilter("status", e.target.value)}
           />
           <Select className="w-full sm:w-48" options={toOptions(priorityLabel)} placeholder="Todas as prioridades" value={filters.priority} onChange={(e) => setFilter("priority", e.target.value)} />
-          <Select className="w-full sm:w-44" options={toOptions(ticketTypeLabel)} placeholder="Todas as áreas" value={filters.type} onChange={(e) => setFilter("type", e.target.value)} />
+          {canPickArea ? (
+            <SpecializationSelect className="w-full sm:w-44" placeholder="Todas as áreas" value={filters.specializationId} onChange={(e) => setFilter("specializationId", e.target.value)} />
+          ) : (
+            myArea &&
+            scope !== "mine" && (
+              <SpecializationSelect
+                className="w-full sm:w-44"
+                value={myArea}
+                disabled
+                title="Você vê os chamados da sua área"
+              />
+            )
+          )}
           <FacilitySelect className="w-full sm:w-48" placeholder="Todas as unidades" value={filters.facilityId} onChange={(e) => setFilter("facilityId", e.target.value)} />
           {hasFilters && (
             <Button variant="ghost" icon={<FilterX className="size-4" />} onClick={clearFilters}>
@@ -209,7 +225,7 @@ export function TicketsPage() {
               },
               { header: "Status", cell: (t) => <StatusPill status={t.status} /> },
               { header: "Prioridade", cell: (t) => <Badge tone={priorityTone[t.priority]}>{priorityLabel[t.priority]}</Badge> },
-              { header: "Área", cell: (t) => <Badge>{ticketTypeLabel[t.ticketType]}</Badge> },
+              { header: "Área", cell: (t) => <Badge>{specializationName(t.specialization)}</Badge> },
               { header: "Unidade", cell: (t) => <span className="text-slate-400">{t.facility?.name ?? "—"}</span> },
               {
                 header: "Aberto",

@@ -5,6 +5,7 @@ import {
   useDepartamentOptions,
   useFacilityOptions,
   useItemOptions,
+  useSpecializationOptions,
 } from "@/hooks/useLookups";
 
 type BaseProps = Omit<React.ComponentProps<typeof Select>, "options">;
@@ -43,6 +44,16 @@ export const ItemSelect = forwardRef<HTMLSelectElement, BaseProps>(function Item
   ref,
 ) {
   const { data = [], isLoading } = useItemOptions();
+  return (
+    <Select ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
+  );
+});
+
+export const SpecializationSelect = forwardRef<HTMLSelectElement, BaseProps>(function SpecializationSelect(
+  { placeholder = "Selecione a área", ...props },
+  ref,
+) {
+  const { data = [], isLoading } = useSpecializationOptions();
   return (
     <Select ref={ref} options={data} placeholder={isLoading ? "Carregando..." : placeholder} {...props} />
   );

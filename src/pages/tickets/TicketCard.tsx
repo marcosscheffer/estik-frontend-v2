@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { Building2, Clock } from "lucide-react";
 import clsx from "clsx";
 import { formatRelative } from "@/lib/format";
-import { priorityLabel, priorityTone, ticketTypeLabel } from "@/lib/labels";
+import { priorityLabel, priorityTone, specializationName } from "@/lib/labels";
 import { Badge, StatusPill } from "@/components/ui";
 import type { TicketPriority, TicketSummaryResponse } from "@/types/api";
 
@@ -31,7 +31,7 @@ export function TicketCard({ ticket: t }: { ticket: TicketSummaryResponse }) {
         <StatusPill status={t.status} />
         <div className="flex flex-wrap gap-1.5">
           <Badge tone={priorityTone[t.priority]}>{priorityLabel[t.priority]}</Badge>
-          <Badge>{ticketTypeLabel[t.ticketType]}</Badge>
+          <Badge>{specializationName(t.specialization)}</Badge>
         </div>
       </div>
       <h3 className={clsx("line-clamp-2 font-medium", closed ? "text-slate-400" : "text-slate-100")}>{t.title}</h3>

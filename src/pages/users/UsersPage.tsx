@@ -4,16 +4,17 @@ import { useFilters } from "@/hooks/useFilters";
 import { useViewMode } from "@/hooks/useViewMode";
 import { usersService } from "@/services/users";
 import { prettyRole, useRoles } from "@/hooks/useRoles";
-import { Badge, Card, CardGrid, ErrorState, PageHeader, Pagination, SearchInput, Table, ViewToggle } from "@/components/ui";
-import { FacilitySelect } from "@/components/LookupSelects";
+import { Badge, Card, CardGrid, ErrorState, PageHeader, Pagination, SearchInput, Select, Table, ViewToggle } from "@/components/ui";
+import { FacilitySelect, SpecializationSelect } from "@/components/LookupSelects";
 import { UserCard } from "./UserCard";
 import type { UserFilters } from "@/services/users";
 import type { UserResponseSummary } from "@/types/api";
 
 export function UsersPage() {
   const navigate = useNavigate();
-  const { filters, page, setFilter, setPage } = useFilters({ username: "", facilityId: "" });
-  const { nameOf, enabled: showRoles } = useRoles();
+  const { filters, page, setFilter, setPage } = useFilters({ username: "", facilityId: "", roleId: "", specializationId: "" });
+  // o nome do perfil já vem em cada usuário; a lista de perfis (para filtrar) exige SYSTEM_MANAGE
+  const { roles, enabled: canListRoles } = useRoles();
   const [view, setView] = useViewMode("users");
 
   const query = { ...(filters as UserFilters), page, size: 20 };
@@ -36,6 +37,16 @@ export function UsersPage() {
             <SearchInput value={filters.username} onChange={(v) => setFilter("username", v)} placeholder="Buscar por usuário" />
           </div>
           <FacilitySelect className="w-full sm:w-52" placeholder="Todas as unidades" value={filters.facilityId} onChange={(e) => setFilter("facilityId", e.target.value)} />
+          {canListRoles && (
+            <Select
+              className="w-full sm:w-44"
+              options={roles.map((r) => ({ value: r.id, label: prettyRole(r.name) }))}
+              placeholder="Todos os perfis"
+              value={filters.roleId}
+              onChange={(e) => setFilter("roleId", e.target.value)}
+            />
+          )}
+          <SpecializationSelect className="w-full sm:w-44" placeholder="Todas as áreas" value={filters.specializationId} onChange={(e) => setFilter("specializationId", e.target.value)} />
         </div>
         {error ? <div className="p-4"><ErrorState error={error} /></div> : view === "grid" ? (
           <CardGrid
@@ -53,7 +64,8 @@ export function UsersPage() {
             columns={[
               { header: "Usuário", cell: (u) => <span className="font-medium text-slate-100">{u.username}</span> },
               { header: "E-mail", cell: (u) => u.email || "—" },
-              ...(showRoles ? [{ header: "Perfil", cell: (u: UserResponseSummary) => <Badge tone="violet">{prettyRole(nameOf(u.role))}</Badge> }] : []),
+              { header: "Perfil", cell: (u: UserResponseSummary) => <Badge tone="violet">{prettyRole(u.role?.name)}</Badge> },
+              { header: "Área", cell: (u: UserResponseSummary) => u.specialization?.name ?? "—" },
               { header: "Situação", cell: (u) => <Badge tone={u.active ? "green" : "amber"}>{u.active ? "Ativo" : "Inativo"}</Badge> },
             ]}
           />

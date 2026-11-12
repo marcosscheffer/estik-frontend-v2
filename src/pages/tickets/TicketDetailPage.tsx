@@ -8,7 +8,7 @@ import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService, type TicketAction } from "@/services/tickets";
 import { access } from "@/lib/permissions";
 import { formatDateTime, formatRelative } from "@/lib/format";
-import { priorityLabel, priorityTone, ticketTypeLabel } from "@/lib/labels";
+import { priorityLabel, priorityTone, specializationName } from "@/lib/labels";
 import {
   Badge,
   Button,
@@ -137,7 +137,7 @@ export function TicketDetailPage() {
                 Prioridade <Badge tone={priorityTone[ticket.priority]}>{priorityLabel[ticket.priority]}</Badge>
               </span>
               <span className="flex items-center gap-1.5 text-xs text-slate-500">
-                Área <Badge>{ticketTypeLabel[ticket.ticketType]}</Badge>
+                Área <Badge>{specializationName(ticket.specialization)}</Badge>
               </span>
             </div>
             <div>

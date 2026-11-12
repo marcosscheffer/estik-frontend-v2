@@ -1,12 +1,11 @@
 import { useNavigate } from "react-router-dom";
-import { prettyRole, useRoles } from "@/hooks/useRoles";
+import { prettyRole } from "@/hooks/useRoles";
 import { Badge, Tile } from "@/components/ui";
 import type { UserResponseSummary } from "@/types/api";
 
 /** Card de usuário usado na lista de usuários e no detalhe da unidade. */
 export function UserCard({ user: u }: { user: UserResponseSummary }) {
   const navigate = useNavigate();
-  const { nameOf, enabled } = useRoles();
   return (
     <Tile onClick={() => navigate(`/users/${u.id}`)}>
       <div className="flex items-center gap-3">
@@ -19,7 +18,8 @@ export function UserCard({ user: u }: { user: UserResponseSummary }) {
         </div>
       </div>
       <div className="mt-auto flex flex-wrap gap-1.5">
-        {enabled && <Badge tone="violet">{prettyRole(nameOf(u.role))}</Badge>}
+        <Badge tone="violet">{prettyRole(u.role?.name)}</Badge>
+        {u.specialization && <Badge>{u.specialization.name}</Badge>}
         <Badge tone={u.active ? "green" : "amber"}>{u.active ? "Ativo" : "Inativo"}</Badge>
       </div>
     </Tile>

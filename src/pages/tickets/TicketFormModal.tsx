@@ -5,14 +5,15 @@ import { z } from "zod";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { ticketsService } from "@/services/tickets";
-import { priorityLabel, ticketTypeLabel, toOptions } from "@/lib/labels";
+import { priorityLabel, toOptions } from "@/lib/labels";
 import { Button, Input, Modal, Select, Textarea } from "@/components/ui";
+import { SpecializationSelect } from "@/components/LookupSelects";
 import type { TicketResponse } from "@/types/api";
 
 const schema = z.object({
   title: z.string().trim().min(1, "Informe um título"),
   description: z.string().trim(),
-  ticketType: z.enum(["IT", "MAINTENANCE"]),
+  specializationId: z.string().min(1, "Escolha a área"),
   // opcional porque o select fica desabilitado na edição (e campo desabilitado não envia valor)
   priority: z.enum(["MILD", "MODERATE", "URGENT"]).optional(),
 });
@@ -41,7 +42,7 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
     reset({
       title: ticket?.title ?? "",
       description: ticket?.description ?? "",
-      ticketType: ticket?.ticketType ?? "IT",
+      specializationId: ticket?.specialization?.id ?? "",
       priority: ticket?.priority ?? "MODERATE",
     });
   }, [open, ticket, reset]);
@@ -57,7 +58,7 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
             title: data.title,
             description: data.description || data.title,
             // o update não aceita priority: depois de aberto, só quem encaminha muda
-            ticketType: data.ticketType,
+            specializationId: data.specializationId,
           })
         : ticketsService.create({
             ...data,
@@ -105,7 +106,12 @@ export function TicketFormModal({ open, onClose, ticket, onSaved }: Props) {
           {...register("description")}
           error={errors.description?.message}
         />
-        <Select label="Área" options={toOptions(ticketTypeLabel)} {...register("ticketType")} />
+        <SpecializationSelect
+          label="Área"
+          hint={editing ? undefined : "Quem vai atender: a área define quem vê e recebe o chamado."}
+          {...register("specializationId")}
+          error={errors.specializationId?.message}
+        />
         <Select
           label="Prioridade"
           options={toOptions(priorityLabel)}
