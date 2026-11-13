@@ -6,7 +6,7 @@ export interface SpecializationFilters extends PageParams {
   name?: string;
 }
 
-/** GET /specializations/** é para qualquer logado; criar e apagar exigem SYSTEM_MANAGE. */
+/** GET /specializations/** é para qualquer logado; criar, renomear e apagar exigem SYSTEM_MANAGE. */
 export const specializationsService = {
   list: (params: SpecializationFilters = {}) =>
     api
@@ -15,5 +15,8 @@ export const specializationsService = {
   get: (id: UUID) => api.get<SpecializationResponse>(`/specializations/${id}`).then((r) => r.data),
   create: (name: string) =>
     api.post<SpecializationResponse>("/specializations", { name }).then((r) => r.data),
+  /** PUT /specializations/{id} { name }: só renomeia (UpdateSpecializationRequest). */
+  rename: (id: UUID, name: string) =>
+    api.put<SpecializationResponse>(`/specializations/${id}`, { name }).then((r) => r.data),
   remove: (id: UUID) => api.delete(`/specializations/${id}`).then(() => undefined),
 };
