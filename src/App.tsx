@@ -17,6 +17,8 @@ import { DepartamentDetailPage } from "@/pages/admin/DepartamentDetailPage";
 import { CategoriesPage } from "@/pages/catalog/CategoriesPage";
 import { ItemsPage } from "@/pages/catalog/ItemsPage";
 import { BalancesPage } from "@/pages/stock/BalancesPage";
+import { BalanceCategoriesPage } from "@/pages/stock/BalanceCategoriesPage";
+import { CategoryBalancesPage } from "@/pages/stock/CategoryBalancesPage";
 import { MovementsPage } from "@/pages/stock/MovementsPage";
 import { UsersPage } from "@/pages/users/UsersPage";
 import { UserDetailPage } from "@/pages/users/UserDetailPage";
@@ -52,7 +54,9 @@ export default function App() {
 
           <Route element={<PermissionRoute need={access.stock} />}>
             <Route path="stock" element={<Navigate to="/stock/balances" replace />} />
-            <Route path="stock/balances" element={<BalancesPage />} />
+            <Route path="stock/balances" element={<BalanceCategoriesPage />} />
+            <Route path="stock/balances/category/:categoryId" element={<CategoryBalancesPage />} />
+            <Route path="stock/balances/all" element={<BalancesPage />} />
             <Route path="stock/movements" element={<MovementsPage />} />
             <Route path="items" element={<ItemsPage />} />
             <Route path="categories" element={<CategoriesPage />} />

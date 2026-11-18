@@ -354,10 +354,14 @@ export interface CategorySummaryResponse {
 }
 export interface CategoryResponse extends CategorySummaryResponse {
   description?: string;
+  /** estoque mínimo da categoria (o backend ainda não devolve aqui; vem no /stock/balances/by-category) */
+  minimum?: number | null;
 }
 export interface CategoryRequest {
   name?: string;
   description?: string;
+  /** estoque mínimo da categoria (soma de todos os itens), >= 1 */
+  minimum?: number;
 }
 
 /* ---------- Items ---------- */
@@ -368,7 +372,6 @@ export interface ItemSummaryResponse {
 }
 export interface ItemResponse extends ItemSummaryResponse {
   description?: string;
-  minimum: number;
   categoryId: UUID;
   createdAt: ISODate;
   updatedAt: ISODate;
@@ -377,7 +380,6 @@ export interface ItemRequest {
   name: string;
   description: string;
   sku: string;
-  minimum: number;
   categoryId: UUID;
 }
 
@@ -394,6 +396,15 @@ export interface StockBalanceSummaryResponse {
   quantity: number;
   /** estoque mínimo do item */
   minimum?: number | null;
+}
+/** GET /stock/balances/by-category: categoria com o saldo somado de todos os itens */
+export interface StockCategoryResponse {
+  id: UUID;
+  name: string;
+  description?: string | null;
+  /** mínimo da categoria, comparado com o total (quantity) */
+  minimum?: number | null;
+  quantity: number | null;
 }
 export interface StockBalanceResponse extends StockBalanceSummaryResponse {
   departament: RefSummary;

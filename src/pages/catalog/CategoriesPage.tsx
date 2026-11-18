@@ -10,11 +10,13 @@ import { useFilters } from "@/hooks/useFilters";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useViewMode } from "@/hooks/useViewMode";
 import { categoriesService } from "@/services/catalog";
+import { stockService } from "@/services/stock";
 import { Button, Card, CardGrid, ErrorState, Input, Modal, PageHeader, Pagination, SearchInput, Table, Textarea, Tile, TileIcon, ViewToggle } from "@/components/ui";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome"),
   description: z.string().trim(),
+  minimum: z.coerce.number<number>().int("Use um número inteiro").min(1, "O mínimo é pelo menos 1"),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -27,14 +29,26 @@ function CategoryModal({ open, onClose, id }: { open: boolean; onClose: () => vo
     enabled: open && !!id,
   });
 
+  // O GET /categories/{id} ainda não traz o mínimo; ele vem junto com o total em /stock/balances/by-category.
+  const stock = useQuery({
+    queryKey: ["stock", "by-category", { name: detail.data?.name, size: 100 }],
+    queryFn: () => stockService.byCategory({ name: detail.data!.name, size: 100 }),
+    enabled: open && !!id && !!detail.data && detail.data.minimum == null,
+  });
+  const currentMinimum = detail.data?.minimum ?? stock.data?.items.find((c) => c.id === id)?.minimum ?? undefined;
+
   useEffect(() => {
     if (!open) return;
-    reset({ name: detail.data?.name ?? "", description: detail.data?.description ?? "" });
-  }, [open, detail.data, reset]);
+    reset({
+      name: detail.data?.name ?? "",
+      description: detail.data?.description ?? "",
+      minimum: currentMinimum ?? 1,
+    });
+  }, [open, detail.data, currentMinimum, reset]);
 
   const save = useApiMutation({
     mutationFn: (d: FormData) => (id ? categoriesService.update(id, d) : categoriesService.create(d)),
-    invalidate: [["categories"], ["lookup", "categories"]],
+    invalidate: [["categories"], ["lookup", "categories"], ["stock"]],
     success: id ? "Categoria atualizada" : "Categoria criada",
     onSuccess: onClose,
   });
@@ -45,6 +59,14 @@ function CategoryModal({ open, onClose, id }: { open: boolean; onClose: () => vo
       <form id="cat-form" onSubmit={handleSubmit((d) => save.mutate(d))} className="space-y-4">
         <Input label="Nome" {...register("name")} error={errors.name?.message} />
         <Textarea label="Descrição" rows={3} {...register("description")} />
+        <Input
+          label="Estoque mínimo da categoria"
+          type="number"
+          min={1}
+          hint="Soma de todos os itens da categoria. Abaixo disso o card fica vermelho em Saldos."
+          {...register("minimum")}
+          error={errors.minimum?.message}
+        />
       </form>
     </Modal>
   );

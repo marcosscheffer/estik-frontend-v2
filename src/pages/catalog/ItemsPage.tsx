@@ -17,7 +17,6 @@ const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome"),
   sku: z.string().trim().min(1, "Informe o SKU"),
   description: z.string().trim().min(1, "Informe a descrição"),
-  minimum: z.coerce.number<number>().int("Use um número inteiro").min(0, "Não pode ser negativo"),
   categoryId: z.string().min(1, "Selecione a categoria"),
 });
 type FormData = z.infer<typeof schema>;
@@ -37,7 +36,6 @@ function ItemModal({ open, onClose, id }: { open: boolean; onClose: () => void; 
       name: d?.name ?? "",
       sku: d?.sku ?? "",
       description: d?.description ?? "",
-      minimum: d?.minimum ?? 0,
       categoryId: d?.categoryId ?? "",
     });
   }, [open, detail.data, reset]);
@@ -57,7 +55,6 @@ function ItemModal({ open, onClose, id }: { open: boolean; onClose: () => void; 
         <Input label="SKU" placeholder="MOUSE-USB-01" {...register("sku")} error={errors.sku?.message} />
         <Textarea label="Descrição" rows={3} className="sm:col-span-2" {...register("description")} error={errors.description?.message} />
         <CategorySelect label="Categoria" {...register("categoryId")} error={errors.categoryId?.message} />
-        <Input label="Estoque mínimo" type="number" min={0} {...register("minimum")} error={errors.minimum?.message} />
       </form>
     </Modal>
   );

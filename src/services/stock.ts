@@ -7,6 +7,7 @@ import type {
   PageResult,
   StockBalanceResponse,
   StockBalanceSummaryResponse,
+  StockCategoryResponse,
   StockMovementResponse,
   StockMovementSummaryResponse,
   TransferRequest,
@@ -17,6 +18,9 @@ export interface BalanceFilters extends PageParams {
   facilityId?: UUID;
   departamentId?: UUID;
   itemId?: UUID;
+}
+export interface CategoryBalanceFilters extends PageParams {
+  name?: string;
 }
 export interface MovementFilters extends PageParams {
   facilityId?: UUID;
@@ -31,6 +35,13 @@ export const stockService = {
   balances: (params: BalanceFilters) =>
     api
       .get<PageResult<StockBalanceSummaryResponse>>("/stock/balances", {
+        params: cleanParams(params),
+      })
+      .then((r) => r.data),
+  /** categorias com o total em estoque (soma de todas as unidades) */
+  byCategory: (params: CategoryBalanceFilters) =>
+    api
+      .get<PageResult<StockCategoryResponse>>("/stock/balances/by-category", {
         params: cleanParams(params),
       })
       .then((r) => r.data),
