@@ -5,13 +5,14 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Package, Pencil, Plus } from "lucide-react";
+import { Package, Pencil, Plus, Trash2 } from "lucide-react";
 import { useFilters } from "@/hooks/useFilters";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useViewMode } from "@/hooks/useViewMode";
 import { itemsService } from "@/services/catalog";
 import { Button, Card, CardGrid, ErrorState, Input, Modal, PageHeader, Pagination, SearchInput, Table, Textarea, Tile, TileIcon, ViewToggle } from "@/components/ui";
 import { CategorySelect } from "@/components/LookupSelects";
+import { DeleteCatalogDialog } from "./DeleteCatalogDialog";
 
 const schema = z.object({
   name: z.string().trim().min(1, "Informe o nome"),
@@ -66,6 +67,7 @@ export function ItemsPage() {
   const canWrite = can(access.catalogWrite);
   const { filters, page, setFilter, setPage } = useFilters({ name: "", categoryId: "" });
   const [editing, setEditing] = useState<string | "new" | null>(null);
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
   const [view, setView] = useViewMode("items");
 
   const query = { ...filters, page, size: 20 };
@@ -100,7 +102,12 @@ export function ItemsPage() {
                   <h3 className="truncate font-medium text-slate-100">{i.name}</h3>
                   <p className="truncate font-mono text-xs text-slate-500">{i.sku}</p>
                 </div>
-                {canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" />}
+                {canWrite && (
+                  <div className="flex shrink-0">
+                    <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" title="Editar" />
+                    <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300" icon={<Trash2 className="size-4" />} onClick={() => setDeleting(i)} aria-label="Apagar" title="Apagar" />
+                  </div>
+                )}
               </Tile>
             )}
           />
@@ -115,13 +122,20 @@ export function ItemsPage() {
               {
                 header: "",
                 className: "text-right",
-                cell: (i) => canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" />,
+                cell: (i) =>
+                  canWrite && (
+                    <div className="inline-flex">
+                      <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(i.id)} aria-label="Editar" title="Editar" />
+                      <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300" icon={<Trash2 className="size-4" />} onClick={() => setDeleting(i)} aria-label="Apagar" title="Apagar" />
+                    </div>
+                  ),
               },
             ]}
           />
         )}
         {data && <Pagination page={page} totalPages={data.totalPages} totalItems={data.totalItems} onChange={setPage} />}
       </Card>
+      <DeleteCatalogDialog kind="item" target={deleting} onClose={() => setDeleting(null)} />
       <ItemModal open={!!editing} onClose={() => setEditing(null)} id={editing === "new" ? undefined : editing ?? undefined} />
     </>
   );

@@ -5,7 +5,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Pencil, Plus, Tag } from "lucide-react";
+import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import { DeleteCatalogDialog } from "./DeleteCatalogDialog";
 import { useFilters } from "@/hooks/useFilters";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useViewMode } from "@/hooks/useViewMode";
@@ -78,6 +79,7 @@ export function CategoriesPage() {
   const canWrite = can(access.catalogWrite);
   const { filters, page, setFilter, setPage } = useFilters({ name: "" });
   const [editing, setEditing] = useState<string | "new" | null>(null);
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
   const [view, setView] = useViewMode("categories");
 
   const query = { ...filters, page, size: 20 };
@@ -107,7 +109,12 @@ export function CategoriesPage() {
               <Tile className="flex-row items-center">
                 <TileIcon icon={Tag} />
                 <h3 className="min-w-0 flex-1 truncate font-medium text-slate-100">{c.name}</h3>
-                {canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" />}
+                {canWrite && (
+                  <div className="flex shrink-0">
+                    <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" title="Editar" />
+                    <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300" icon={<Trash2 className="size-4" />} onClick={() => setDeleting(c)} aria-label="Apagar" title="Apagar" />
+                  </div>
+                )}
               </Tile>
             )}
           />
@@ -121,13 +128,20 @@ export function CategoriesPage() {
               {
                 header: "",
                 className: "text-right",
-                cell: (c) => canWrite && <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" />,
+                cell: (c) =>
+                  canWrite && (
+                    <div className="inline-flex">
+                      <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(c.id)} aria-label="Editar" title="Editar" />
+                      <Button size="sm" variant="ghost" className="text-red-400 hover:text-red-300" icon={<Trash2 className="size-4" />} onClick={() => setDeleting(c)} aria-label="Apagar" title="Apagar" />
+                    </div>
+                  ),
               },
             ]}
           />
         )}
         {data && <Pagination page={page} totalPages={data.totalPages} totalItems={data.totalItems} onChange={setPage} />}
       </Card>
+      <DeleteCatalogDialog kind="category" target={deleting} onClose={() => setDeleting(null)} />
       <CategoryModal open={!!editing} onClose={() => setEditing(null)} id={editing === "new" ? undefined : editing ?? undefined} />
     </>
   );

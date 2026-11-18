@@ -31,6 +31,8 @@ export const categoriesService = {
     api.post<CategoryResponse>("/categories", body).then((r) => r.data),
   update: (id: UUID, body: CategoryRequest) =>
     api.put<CategoryResponse>(`/categories/${id}`, body).then((r) => r.data),
+  /** apaga a categoria e, por cascata no banco, os itens, saldos e movimentações dela */
+  remove: (id: UUID) => api.delete<void>(`/categories/${id}`).then(() => undefined),
 };
 
 export const itemsService = {
@@ -42,4 +44,6 @@ export const itemsService = {
   create: (body: ItemRequest) => api.post<ItemResponse>("/items", body).then((r) => r.data),
   update: (id: UUID, body: Partial<ItemRequest>) =>
     api.put<ItemResponse>(`/items/${id}`, body).then((r) => r.data),
+  /** apaga o item e, por cascata no banco, os saldos e movimentações dele */
+  remove: (id: UUID) => api.delete<void>(`/items/${id}`).then(() => undefined),
 };
