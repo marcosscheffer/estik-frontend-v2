@@ -99,8 +99,9 @@ interface Props {
 /**
  * Conversa do chamado (módulo /chats). Regras:
  * - o chat é criado quando o técnico assume (ticket.chatId fica preenchido);
- * - solicitante e responsável participam e enviam mensagens;
- * - quem tem TICKET_MANAGE lê qualquer conversa, mas não envia (não é participante);
+ * - solicitante e responsáveis (podem ser vários) participam e enviam mensagens;
+ * - quem foi tirado num reencaminhamento fica inativo: não lê nem envia;
+ * - TICKET_MANAGE lê qualquer conversa e TICKET_SUPERVISOR só as da área dele, mas não enviam;
  * - fica só leitura quando o chamado é resolvido ou cancelado.
  */
 export function TicketChat({ ticket, me, className, fill, events, supervise = false }: Props) {
@@ -108,7 +109,7 @@ export function TicketChat({ ticket, me, className, fill, events, supervise = fa
   const chatId = ticket.chatId ?? undefined;
   const key = useMemo(() => ["chats", chatId, "messages"], [chatId]);
 
-  const participant = ticket.requester?.id === me || ticket.assignee?.id === me;
+  const participant = ticket.requester?.id === me || (ticket.assigneeds ?? []).some((a) => a.user?.id === me);
   const closed = ticket.status === "RESOLVED" || ticket.status === "CANCELLED";
   const canRead = !!chatId && (participant || supervise);
   // supervisor só olha: o backend só aceita mensagem de participante
@@ -352,7 +353,7 @@ export function TicketChat({ ticket, me, className, fill, events, supervise = fa
 
   const forbidden = getStatus(messages.error) === 403;
   const nameOf = (m?: MessageResponse) => (m?.sender?.userId?.id === me ? "Você" : m?.sender?.userId?.username ?? "—");
-  const people = [ticket.requester, ticket.assignee].filter((p): p is NonNullable<typeof p> => !!p);
+  const people = [ticket.requester, ...(ticket.assigneeds ?? []).map((a) => a.user)].filter((p): p is NonNullable<typeof p> => !!p);
 
   const empty = (icon: React.ReactNode, title: string, text?: string) => (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-12 text-center">

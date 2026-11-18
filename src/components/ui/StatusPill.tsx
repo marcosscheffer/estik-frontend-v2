@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, CircleDot, Clock, Send, type LucideIcon } from "lucide-react";
+import { Ban, CheckCircle2, CircleDot, Clock, Forward, Send, type LucideIcon } from "lucide-react";
 import clsx from "clsx";
 import { statusLabel } from "@/lib/labels";
 import type { TicketStatus } from "@/types/api";
@@ -10,6 +10,7 @@ import type { TicketStatus } from "@/types/api";
 const styles: Record<TicketStatus, { icon: LucideIcon; cls: string }> = {
   OPEN: { icon: CircleDot, cls: "bg-slate-800 text-slate-200 ring-slate-600" },
   FORWARDED: { icon: Send, cls: "bg-violet-950 text-violet-200 ring-violet-800" },
+  REFORWARDED: { icon: Forward, cls: "bg-violet-950 text-violet-200 ring-violet-800" },
   PROGRESS: { icon: Clock, cls: "bg-sky-950 text-sky-200 ring-sky-700" },
   RESOLVED: { icon: CheckCircle2, cls: "bg-emerald-950 text-emerald-200 ring-emerald-800" },
   CANCELLED: { icon: Ban, cls: "bg-rose-950 text-rose-200 ring-rose-800" },

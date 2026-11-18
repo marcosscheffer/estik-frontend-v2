@@ -25,6 +25,7 @@ export function notificationLink(n: NotificationRef): string | undefined {
 export const statusLabel: Record<TicketStatus, string> = {
   OPEN: "Aberto",
   FORWARDED: "Encaminhado",
+  REFORWARDED: "Reencaminhado",
   PROGRESS: "Em andamento",
   RESOLVED: "Resolvido",
   CANCELLED: "Cancelado",
@@ -32,6 +33,7 @@ export const statusLabel: Record<TicketStatus, string> = {
 export const statusTone: Record<TicketStatus, Tone> = {
   OPEN: "gray",
   FORWARDED: "violet",
+  REFORWARDED: "violet",
   PROGRESS: "blue",
   RESOLVED: "green",
   CANCELLED: "red",

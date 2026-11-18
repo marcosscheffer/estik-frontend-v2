@@ -19,6 +19,7 @@ const statuses = Object.keys(statusLabel) as TicketStatus[];
 const statusColor: Record<TicketStatus, string> = {
   OPEN: "bg-slate-400",
   FORWARDED: "bg-violet-500",
+  REFORWARDED: "bg-violet-300",
   PROGRESS: "bg-sky-500",
   RESOLVED: "bg-emerald-500",
   CANCELLED: "bg-rose-500",
@@ -116,10 +117,17 @@ export function DashboardPage() {
     queryFn: () => ticketsService.list({ regulatorId: me, size: 1 }),
     enabled: canForward,
   });
-  // encaminhados a mim que ainda não assumi
+  // encaminhados a mim que ainda esperam alguém assumir (encaminhado ou reencaminhado);
+  // o GET /tickets aceita um status só, então soma as duas buscas
   const forwarded = useQuery({
-    queryKey: ["tickets", "list", { forwardedId: me, status: "FORWARDED", size: 1 }],
-    queryFn: () => ticketsService.list({ forwardedId: me, status: "FORWARDED", size: 1 }),
+    queryKey: ["tickets", "count-forwarded-to-me", me],
+    queryFn: async () => {
+      const [a, b] = await Promise.all([
+        ticketsService.list({ forwardedId: me, status: "FORWARDED", size: 1 }),
+        ticketsService.list({ forwardedId: me, status: "REFORWARDED", size: 1 }),
+      ]);
+      return { totalItems: a.totalItems + b.totalItems };
+    },
     enabled: receiver,
   });
   const assigned = useQuery({
@@ -151,7 +159,7 @@ export function DashboardPage() {
   const work = [
     { label: "Meus chamados", value: myTickets.data?.totalItems, icon: Ticket, to: "/tickets?scope=mine", accent: "blue" as const, show: true },
     { label: "Para triagem", value: triage.data?.totalItems, icon: Inbox, to: "/tickets?scope=triage", accent: "violet" as const, show: canForward, hint: "Abertos esperando encaminhamento" },
-    { label: "Encaminhados pra mim", value: forwarded.data?.totalItems, icon: Send, to: "/tickets?scope=forwarded&status=FORWARDED", accent: "teal" as const, show: receiver, hint: "Esperando você assumir" },
+    { label: "Encaminhados pra mim", value: forwarded.data?.totalItems, icon: Send, to: "/tickets?scope=forwarded", accent: "teal" as const, show: receiver, hint: "Esperando você assumir" },
     { label: "Em atendimento por mim", value: assigned.data?.totalItems, icon: UserCheck, to: "/tickets?scope=assigned&status=PROGRESS", accent: "amber" as const, show: receiver },
     { label: "Encaminhados por mim", value: sent.data?.totalItems, icon: Forward, to: "/tickets?scope=sent", accent: "emerald" as const, show: canForward },
   ].filter((s) => s.show);

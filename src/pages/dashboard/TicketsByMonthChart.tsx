@@ -205,7 +205,9 @@ export function TicketsByMonthChart({ filters = {} }: { filters?: TicketFilters 
     const byKey = new Map(months.map((m) => [m.key, m]));
     for (const t of data?.items ?? []) {
       const row = byKey.get(monthKey(new Date(t.createdAt)));
-      if (row && t.status in row && t.status !== "CANCELLED") row[t.status as keyof Counts]++;
+      // reencaminhado conta junto com encaminhado (os dois esperam alguém assumir)
+      const status = t.status === "REFORWARDED" ? "FORWARDED" : t.status;
+      if (row && status in row && status !== "CANCELLED") row[status as keyof Counts]++;
     }
     return months;
   }, [data]);

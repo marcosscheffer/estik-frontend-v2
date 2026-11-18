@@ -182,7 +182,7 @@ function RenameRow({ area, invalidate, nameTaken, onDone }: RenameRowProps) {
 
 /* ---------- Apagar (confirmação rígida) ---------- */
 
-const ACTIVE_STATUSES: TicketStatus[] = ["OPEN", "FORWARDED", "PROGRESS"];
+const ACTIVE_STATUSES: TicketStatus[] = ["OPEN", "FORWARDED", "REFORWARDED", "PROGRESS"];
 
 interface DeleteAreaDialogProps {
   area: SpecializationResponse | null;

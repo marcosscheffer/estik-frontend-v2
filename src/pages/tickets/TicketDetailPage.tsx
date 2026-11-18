@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Ban, CheckCircle2, Hand, Pencil, RotateCcw, Send, Trash2 } from "lucide-react";
+import { Ban, CheckCircle2, Clock, Hand, Hourglass, Pencil, RotateCcw, Send, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/contexts/AuthContext";
 import { useApiMutation } from "@/hooks/useApiMutation";
@@ -66,14 +66,24 @@ export function TicketDetailPage() {
   if (error || !ticket) return <ErrorState error={error} />;
 
   // Mesmas regras do domínio Ticket no backend, para só mostrar o que faz sentido.
+  const forwardedUsers = (ticket.forwarded ?? []).map((f) => f.user).filter(Boolean);
+  const assignees = (ticket.assigneeds ?? []).map((a) => a.user).filter(Boolean);
   const isRequester = ticket.requester?.id === me;
-  const isAssignee = ticket.assignee?.id === me;
+  const isAssignee = assignees.some((u) => u.id === me);
   const closed = ticket.status === "RESOLVED" || ticket.status === "CANCELLED";
-  const isForwarded = ticket.forwarded?.id === me;
-  // Ticket.assignTo: só quem recebeu o encaminhamento, não o solicitante, sem responsável ainda
-  const canAssume = isForwarded && !isRequester && !ticket.assignee && ticket.status === "FORWARDED";
-  // Ticket.forward aceita OPEN ou FORWARDED; só ADMINISTRATOR encaminha
-  const canForward = can(access.forwardTickets) && (ticket.status === "OPEN" || ticket.status === "FORWARDED");
+  const isForwarded = forwardedUsers.some((u) => u.id === me);
+  // equipe do chamado: quem foi encaminhado, marcando quem já assumiu (atendendo vem primeiro)
+  const team = [
+    ...forwardedUsers.map((u) => ({ user: u, working: assignees.some((a) => a.id === u.id) })),
+    ...assignees.filter((a) => !forwardedUsers.some((u) => u.id === a.id)).map((u) => ({ user: u, working: true })),
+  ].sort((a, b) => Number(b.working) - Number(a.working) || a.user.username.localeCompare(b.user.username));
+  const workingCount = team.filter((t) => t.working).length;
+  // Ticket.assign: quem está na lista de encaminhados e ainda não assumiu; vários podem assumir,
+  // então vale também com o chamado já em andamento
+  const canAssume =
+    isForwarded && !isAssignee && !isRequester && ["FORWARDED", "REFORWARDED", "PROGRESS"].includes(ticket.status);
+  // Ticket.forward/reforward: qualquer status menos resolvido ou cancelado
+  const canForward = can(access.forwardTickets) && !closed;
   const canResolve = isAssignee && ticket.status === "PROGRESS";
   const canReopen = isRequester && ticket.status === "RESOLVED";
   const canCancel = isRequester && !closed;
@@ -95,7 +105,7 @@ export function TicketDetailPage() {
             )}
             {canForward && (
               <Button variant="secondary" icon={<Send className="size-4" />} onClick={() => setForwardOpen(true)}>
-                {ticket.forwarded ? "Reencaminhar" : "Encaminhar"}
+                {forwardedUsers.length ? "Reencaminhar" : "Encaminhar"}
               </Button>
             )}
             {canResolve && (
@@ -152,22 +162,67 @@ export function TicketDetailPage() {
           <div className="border-t border-slate-800 px-5 py-4">
             <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
               {[
-                { role: "Solicitante", user: ticket.requester, empty: "—" },
-                { role: "Encaminhado por", user: ticket.regulator, empty: "—" },
-                { role: "Encaminhado para", user: ticket.forwarded, empty: "—" },
-                { role: "Responsável", user: ticket.assignee, empty: "—" },
-              ].map(({ role, user, empty }) => (
+                { role: "Solicitante", user: ticket.requester },
+                { role: "Encaminhado por", user: ticket.regulator },
+              ].map(({ role, user }) => (
                 <div key={role} className="min-w-0">
                   <dt className="text-xs text-slate-500">{role}</dt>
                   <dd className={clsx("mt-0.5 flex items-center gap-2 text-sm", user ? "text-slate-100" : "text-slate-500")}>
-                    <span className="truncate">{user ? user.username : empty}</span>
-                    {user?.id === me && (
-                      <span className="shrink-0 text-xs text-slate-500">(você)</span>
-                    )}
+                    <span className="truncate">{user ? user.username : "—"}</span>
+                    {user?.id === me && <span className="shrink-0 text-xs text-slate-500">(você)</span>}
                   </dd>
                 </div>
               ))}
             </dl>
+          </div>
+
+          {/* equipe: cada pessoa encaminhada em um cartão, com o estado dela */}
+          <div className="border-t border-slate-800 px-5 py-4">
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">Equipe</h3>
+              {team.length > 0 && (
+                <span className="text-xs text-slate-500">
+                  <span className="text-sky-300">{workingCount} atendendo</span>
+                  {" · "}
+                  <span className="text-violet-300">{team.length - workingCount} aguardando</span>
+                </span>
+              )}
+            </div>
+            {team.length === 0 ? (
+              <p className="text-sm text-slate-500">Ainda não foi encaminhado para ninguém.</p>
+            ) : (
+              <ul className="grid gap-2 sm:grid-cols-2">
+                {team.map(({ user, working }) => (
+                  <li
+                    key={user.id}
+                    className={clsx(
+                      "flex items-center gap-3 rounded-lg px-3 py-2.5 ring-1 ring-inset",
+                      working ? "bg-sky-950/40 ring-sky-900" : "bg-slate-900/60 ring-slate-800",
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold uppercase",
+                        working ? "bg-sky-500/20 text-sky-200" : "bg-violet-500/15 text-violet-200",
+                      )}
+                      aria-hidden
+                    >
+                      {user.username.slice(0, 1)}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-medium text-slate-100">{user.username}</span>
+                        {user.id === me && <span className="shrink-0 text-xs text-slate-500">(você)</span>}
+                      </span>
+                      <span className={clsx("mt-0.5 flex items-center gap-1 text-xs", working ? "text-sky-300" : "text-violet-300")}>
+                        {working ? <Clock className="size-3.5" aria-hidden /> : <Hourglass className="size-3.5" aria-hidden />}
+                        {working ? "Atendendo" : "Aguardando assumir"}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <dl className="grid gap-x-6 gap-y-3 border-t border-slate-800 px-5 py-4 sm:grid-cols-3">

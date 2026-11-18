@@ -16,7 +16,7 @@ export type Permission =
   | "FACILITY_MANAGE"
   | "USER_MANAGE"
   | "SYSTEM_MANAGE";
-export type TicketStatus = "OPEN" | "FORWARDED" | "PROGRESS" | "CANCELLED" | "RESOLVED";
+export type TicketStatus = "OPEN" | "FORWARDED" | "REFORWARDED" | "PROGRESS" | "CANCELLED" | "RESOLVED";
 export type TicketPriority = "MILD" | "MODERATE" | "URGENT";
 export type OsType = "UBUNTU" | "WINDOWS";
 export type StorageType = "NVME" | "SSD" | "HDD";
@@ -237,6 +237,11 @@ export interface TicketUserResponse {
   id: UUID;
   username: string;
 }
+/** Uma linha de `forwarded` ou de `assigneeds`: `id` é da linha, a pessoa está em `user`. */
+export interface TicketMemberResponse {
+  id: UUID;
+  user: TicketUserResponse;
+}
 export interface TicketSummaryResponse {
   id: UUID;
   facility: RefSummary;
@@ -253,11 +258,12 @@ export interface TicketResponse {
   chatId?: UUID | null;
   facility: RefSummary;
   requester: TicketUserResponse;
-  /** Técnico para quem foi encaminhado (só ele pode assumir). */
-  forwarded?: TicketUserResponse | null;
-  /** Quem encaminhou. */
+  /** Para quem foi encaminhado (até 10). Qualquer um deles pode assumir; a linha continua aqui depois de assumir. */
+  forwarded?: TicketMemberResponse[] | null;
+  /** Quem encaminhou por último. */
   regulator?: TicketUserResponse | null;
-  assignee?: TicketUserResponse | null;
+  /** Quem assumiu (vários podem atender juntos). Reencaminhar limpa esta lista. */
+  assigneeds?: TicketMemberResponse[] | null;
   specialization?: SpecializationSummary | null;
   title: string;
   description?: string;
@@ -278,9 +284,12 @@ export interface UpdateTicketRequest {
   description: string;
   specializationId: UUID;
 }
-/** POST /tickets/{id}/forward — o perfil do userId precisa ter TICKET_WORK, TICKET_SUPERVISOR ou TICKET_MANAGE. */
+/**
+ * POST /tickets/{id}/forward — 1 a 10 pessoas, todas com perfil que atende (TICKET_WORK ou acima),
+ * sem o solicitante. A lista nova substitui a anterior; se alguém já atendia, vira REFORWARDED.
+ */
 export interface ForwardTicketRequest {
-  userId: UUID;
+  usersId: UUID[];
   priority: TicketPriority;
 }
 export interface TicketHistoryResponse {

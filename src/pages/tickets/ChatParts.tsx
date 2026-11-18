@@ -71,6 +71,7 @@ export function RichText({ text, mine }: { text: string; mine: boolean }) {
 const eventText: Record<TicketStatus, string> = {
   OPEN: "Chamado aberto",
   FORWARDED: "Chamado encaminhado",
+  REFORWARDED: "Chamado reencaminhado",
   PROGRESS: "Chamado assumido",
   RESOLVED: "Chamado resolvido",
   CANCELLED: "Chamado cancelado",
