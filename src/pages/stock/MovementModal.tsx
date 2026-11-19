@@ -156,6 +156,19 @@ export function MovementModal({ open, onClose, initialKind = "entry", fromBalanc
 
   const current = kinds.find((k) => k.key === kind)!;
 
+  // Veio de um saldo (ex.: "Transferir deste saldo"): as outras abas também usam o item e o local dele.
+  // O resumo do saldo não traz o departamento, então busca o detalhe (fica em cache).
+  const fromDetail = useQuery({
+    queryKey: ["stock", "balance", fromBalance?.id],
+    queryFn: () => stockService.balance(fromBalance!.id),
+    enabled: open && !!fromBalance && !departamentId,
+  });
+  const prefill = {
+    facilityId: facilityId ?? fromBalance?.facility?.id,
+    departamentId: departamentId ?? fromDetail.data?.departament?.id,
+    itemId: itemId ?? fromBalance?.item?.id,
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="Nova movimentação" description={current.help} size="lg">
       <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-slate-800 p-1 text-sm sm:grid-cols-4">
@@ -176,7 +189,15 @@ export function MovementModal({ open, onClose, initialKind = "entry", fromBalanc
       {kind === "transfer" ? (
         <TransferForm key="transfer" onDone={onClose} fromBalance={fromBalance} />
       ) : (
-        <SimpleForm key={kind} kind={kind} onDone={onClose} facilityId={facilityId} departamentId={departamentId} itemId={itemId} />
+        <SimpleForm
+          // remonta quando o departamento chega, para o formulário pegar o valor preenchido
+          key={`${kind}-${prefill.departamentId ?? ""}`}
+          kind={kind}
+          onDone={onClose}
+          facilityId={prefill.facilityId}
+          departamentId={prefill.departamentId}
+          itemId={prefill.itemId}
+        />
       )}
     </Modal>
   );
