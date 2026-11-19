@@ -73,8 +73,21 @@ function SimpleForm({ kind, onDone, facilityId: initialFacility = "", departamen
   );
 }
 
-function TransferForm({ onDone, fromBalance }: { onDone: () => void; fromBalance?: StockBalanceSummaryResponse }) {
-  const [originFacility, setOriginFacility] = useState(fromBalance?.facility.id ?? "");
+/**
+ * Origem em três passos (unidade → departamento → item com saldo), em vez de uma lista
+ * gigante com todos os saldos. O que vai para o backend continua sendo o stockBalanceId.
+ */
+function TransferForm({
+  onDone,
+  fromBalance,
+  originDepartamentId = "",
+}: {
+  onDone: () => void;
+  fromBalance?: StockBalanceSummaryResponse;
+  originDepartamentId?: string;
+}) {
+  const [originFacility, setOriginFacility] = useState(fromBalance?.facility?.id ?? "");
+  const [originDepartament, setOriginDepartament] = useState(originDepartamentId);
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<TransferData>({
     resolver: zodResolver(transferSchema),
     defaultValues: {
@@ -87,16 +100,25 @@ function TransferForm({ onDone, fromBalance }: { onDone: () => void; fromBalance
   const destFacility = watch("facilityDestinationId");
   const balanceId = watch("stockBalanceId");
 
+  // só os saldos do departamento de origem escolhido
   const balances = useQuery({
-    queryKey: ["stock", "balances", "lookup", originFacility],
-    queryFn: () => stockService.balances({ facilityId: originFacility || undefined, size: 100 }),
+    queryKey: ["stock", "balances", "origin", originFacility, originDepartament],
+    queryFn: () => stockService.balances({ facilityId: originFacility, departamentId: originDepartament, size: 100 }),
+    enabled: !!originFacility && !!originDepartament,
   });
-  const options =
-    balances.data?.items.map((b) => ({
-      value: b.id,
-      label: `${b.item.name} · ${b.facility.name} (saldo ${b.quantity})`,
-    })) ?? [];
-  const selected = balances.data?.items.find((b) => b.id === balanceId) ?? fromBalance;
+  const options = [...(balances.data?.items ?? [])]
+    .filter((b) => b.quantity > 0 || b.id === balanceId)
+    .sort((a, b) => a.item.name.localeCompare(b.item.name, "pt-BR"))
+    .map((b) => ({ value: b.id, label: `${b.item.name} · ${b.item.sku} (saldo ${b.quantity})` }));
+  const selected = balances.data?.items.find((b) => b.id === balanceId) ?? (fromBalance?.id === balanceId ? fromBalance : undefined);
+
+  const itemPlaceholder = !originDepartament
+    ? "Escolha o departamento primeiro"
+    : balances.isLoading
+      ? "Carregando..."
+      : options.length === 0
+        ? "Nenhum item com saldo aqui"
+        : "Selecione o item";
 
   const save = useApiMutation({
     mutationFn: (d: TransferData) =>
@@ -108,8 +130,39 @@ function TransferForm({ onDone, fromBalance }: { onDone: () => void; fromBalance
 
   return (
     <form id="movement-form" onSubmit={handleSubmit((d) => save.mutate(d))} className="grid gap-4 sm:grid-cols-2">
-      <FacilitySelect label="Filtrar origem por unidade" placeholder="Todas" value={originFacility} onChange={(e) => setOriginFacility(e.target.value)} />
-      <Select label="Saldo de origem" options={options} placeholder={balances.isLoading ? "Carregando..." : "Selecione"} {...register("stockBalanceId")} error={errors.stockBalanceId?.message} />
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">De onde sai</p>
+      <FacilitySelect
+        label="Unidade de origem"
+        value={originFacility}
+        onChange={(e) => {
+          setOriginFacility(e.target.value);
+          setOriginDepartament("");
+          setValue("stockBalanceId", "");
+        }}
+      />
+      <DepartamentSelect
+        label="Departamento de origem"
+        facilityId={originFacility}
+        disabled={!originFacility}
+        value={originDepartament}
+        onChange={(e) => {
+          setOriginDepartament(e.target.value);
+          setValue("stockBalanceId", "");
+        }}
+      />
+      <Select
+        // remonta quando a lista chega, para o item já escolhido aparecer selecionado
+        key={balances.data ? "ready" : "loading"}
+        label="Item"
+        className="sm:col-span-2"
+        options={options}
+        placeholder={itemPlaceholder}
+        disabled={!originDepartament}
+        {...register("stockBalanceId")}
+        error={errors.stockBalanceId?.message}
+      />
+
+      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500 sm:col-span-2">Para onde vai</p>
       <FacilitySelect label="Unidade de destino" {...register("facilityDestinationId", { onChange: () => setValue("departamentDestinationId", "") })} error={errors.facilityDestinationId?.message} />
       <DepartamentSelect label="Departamento de destino" facilityId={destFacility} disabled={!destFacility} {...register("departamentDestinationId")} error={errors.departamentDestinationId?.message} />
       <Input
@@ -187,7 +240,13 @@ export function MovementModal({ open, onClose, initialKind = "entry", fromBalanc
         ))}
       </div>
       {kind === "transfer" ? (
-        <TransferForm key="transfer" onDone={onClose} fromBalance={fromBalance} />
+        <TransferForm
+          // remonta quando o departamento do saldo chega (vem do detalhe)
+          key={`transfer-${prefill.departamentId ?? ""}`}
+          onDone={onClose}
+          fromBalance={fromBalance}
+          originDepartamentId={prefill.departamentId}
+        />
       ) : (
         <SimpleForm
           // remonta quando o departamento chega, para o formulário pegar o valor preenchido

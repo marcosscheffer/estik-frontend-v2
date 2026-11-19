@@ -144,7 +144,8 @@ export function CategoryBalancesPage() {
     const detail = await queryClient.fetchQuery({ queryKey: ["stock", "balance", b.id], queryFn: () => stockService.balance(b.id) });
     setMovement({
       open: true,
-      kind: b.quantity > 0 ? "exit" : "entry",
+      // com saldo, o mais comum é transferir; sem saldo, só dá para dar entrada
+      kind: b.quantity > 0 ? "transfer" : "entry",
       from: b,
       itemId: b.item.id,
       facilityId: b.facility?.id,
