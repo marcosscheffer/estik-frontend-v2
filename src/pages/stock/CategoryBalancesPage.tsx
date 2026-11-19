@@ -153,13 +153,13 @@ export function CategoryBalancesPage() {
   };
 
   /**
-   * Clique no item: se está guardado em um lugar só, abre direto a movimentação desse lugar;
-   * se não tem saldo, abre uma entrada só com o item; se está em vários, pergunta de qual lugar.
+   * Clique no item: mostra os locais onde ele está guardado (cada um com "Movimentar");
+   * se não tem saldo, abre uma entrada só com o item.
    */
   const openItem = (r: ItemTotal) => {
-    if (!canWrite) return setSelected(r);
-    if (r.balances.length === 1) return void moveFrom(r.balances[0]);
-    if (r.balances.length === 0) return setMovement({ open: true, kind: "entry", itemId: r.item.id });
+    // sem saldo nenhum: não há local para mostrar, abre direto uma entrada com o item
+    if (canWrite && r.balances.length === 0) return setMovement({ open: true, kind: "entry", itemId: r.item.id });
+    // senão sempre mostra onde está guardado; cada local tem "Movimentar" (já preenchido)
     setSelected(r);
   };
 
@@ -296,10 +296,11 @@ export function CategoryBalancesPage() {
       <Modal
         open={!!selected}
         onClose={() => setSelected(null)}
+        size="lg"
         title={selected?.item.name ?? ""}
         description={
           selected
-            ? `${formatNumber(selected.quantity)} em estoque · ${canWrite ? "escolha de qual local movimentar" : "onde está guardado"}`
+            ? `${formatNumber(selected.quantity)} em estoque · ${canWrite ? "onde está guardado · clique num local para movimentar" : "onde está guardado"}`
             : undefined
         }
         footer={
@@ -340,7 +341,8 @@ export function CategoryBalancesPage() {
               rowKey={(b) => b.id}
               onRowClick={canWrite ? (b) => void moveFrom(b) : undefined}
               columns={[
-                { header: "Unidade", cell: (b) => b.facility?.name ?? "—" },
+                // nome de unidade costuma ser longo: quebra linha em vez de rolar para o lado
+                { header: "Unidade", cell: (b) => <span className="block min-w-48 whitespace-normal">{b.facility?.name ?? "—"}</span> },
                 {
                   header: "Departamento",
                   cell: (b) => details.find((d) => d.data?.id === b.id)?.data?.departament?.name ?? "…",
