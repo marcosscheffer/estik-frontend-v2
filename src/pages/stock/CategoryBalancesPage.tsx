@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
-import { ArrowRightLeft, FilterX, PackageOpen, PackagePlus, Pencil, Plus, Trash2 } from "lucide-react";
+import { FilterX, Repeat, PackageOpen, PackagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { access } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFilters } from "@/hooks/useFilters";
@@ -13,7 +13,7 @@ import { formatNumber } from "@/lib/format";
 import { Button, Card, CardGrid, EmptyState, ErrorState, Modal, PageHeader, Table, Tile, ViewToggle } from "@/components/ui";
 import { DepartamentSelect, FacilitySelect } from "@/components/LookupSelects";
 import type { ItemSummaryResponse, StockBalanceSummaryResponse } from "@/types/api";
-import { MovementModal } from "./MovementModal";
+import { MovementModal, type MovementKind } from "./MovementModal";
 import { MinimumTag } from "./BalanceCard";
 import { categoryState } from "./BalanceCategoriesPage";
 import { CategoryModal } from "@/pages/catalog/CategoriesPage";
@@ -50,7 +50,16 @@ export function CategoryBalancesPage() {
   const [, setParams] = useSearchParams();
   const [view, setView] = useViewMode("category-balances");
   const [selected, setSelected] = useState<ItemTotal | null>(null);
-  const [movement, setMovement] = useState<{ open: boolean; from?: StockBalanceSummaryResponse }>({ open: false });
+  // movimentação já preenchida com o item e o local (unidade + departamento) do saldo clicado
+  const [movement, setMovement] = useState<{
+    open: boolean;
+    kind?: MovementKind;
+    from?: StockBalanceSummaryResponse;
+    itemId?: string;
+    facilityId?: string;
+    departamentId?: string;
+  }>({ open: false });
+  const queryClient = useQueryClient();
   const hasFilters = !!(filters.facilityId || filters.departamentId);
 
   const category = useQuery({
@@ -127,6 +136,32 @@ export function CategoryBalancesPage() {
         />
       </div>
     );
+
+  /** Abre a movimentação de um saldo: item, unidade e departamento já preenchidos. */
+  const moveFrom = async (b: StockBalanceSummaryResponse) => {
+    setSelected(null);
+    // o resumo do saldo não traz o departamento; o detalhe traz (e já fica em cache)
+    const detail = await queryClient.fetchQuery({ queryKey: ["stock", "balance", b.id], queryFn: () => stockService.balance(b.id) });
+    setMovement({
+      open: true,
+      kind: b.quantity > 0 ? "exit" : "entry",
+      from: b,
+      itemId: b.item.id,
+      facilityId: b.facility?.id,
+      departamentId: detail.departament?.id,
+    });
+  };
+
+  /**
+   * Clique no item: se está guardado em um lugar só, abre direto a movimentação desse lugar;
+   * se não tem saldo, abre uma entrada só com o item; se está em vários, pergunta de qual lugar.
+   */
+  const openItem = (r: ItemTotal) => {
+    if (!canWrite) return setSelected(r);
+    if (r.balances.length === 1) return void moveFrom(r.balances[0]);
+    if (r.balances.length === 0) return setMovement({ open: true, kind: "entry", itemId: r.item.id });
+    setSelected(r);
+  };
 
   const clearFilters = () => setParams(new URLSearchParams(), { replace: true });
   const empty = (
@@ -217,7 +252,7 @@ export function CategoryBalancesPage() {
             rowKey={(r) => r.item.id}
             empty={empty}
             renderCard={(r) => (
-              <Tile onClick={() => setSelected(r)}>
+              <Tile onClick={() => openItem(r)}>
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <h3 className="truncate font-medium text-slate-100">{r.item.name}</h3>
@@ -246,7 +281,7 @@ export function CategoryBalancesPage() {
             rows={rows}
             loading={items.isLoading}
             rowKey={(r) => r.item.id}
-            onRowClick={setSelected}
+            onRowClick={openItem}
             empty={empty}
             columns={[
               { header: "Item", cell: (r) => <span className="font-medium text-slate-100">{r.item.name}</span> },
@@ -262,7 +297,11 @@ export function CategoryBalancesPage() {
         open={!!selected}
         onClose={() => setSelected(null)}
         title={selected?.item.name ?? ""}
-        description={selected ? `${formatNumber(selected.quantity)} em estoque · onde está guardado` : undefined}
+        description={
+          selected
+            ? `${formatNumber(selected.quantity)} em estoque · ${canWrite ? "escolha de qual local movimentar" : "onde está guardado"}`
+            : undefined
+        }
         footer={
           canCatalog &&
           selected && (
@@ -299,6 +338,7 @@ export function CategoryBalancesPage() {
             <Table
               rows={selected?.balances}
               rowKey={(b) => b.id}
+              onRowClick={canWrite ? (b) => void moveFrom(b) : undefined}
               columns={[
                 { header: "Unidade", cell: (b) => b.facility?.name ?? "—" },
                 {
@@ -312,16 +352,8 @@ export function CategoryBalancesPage() {
                         header: "",
                         className: "text-right",
                         cell: (b: StockBalanceSummaryResponse) => (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            icon={<ArrowRightLeft className="size-4" />}
-                            onClick={() => {
-                              setMovement({ open: true, from: b });
-                              setSelected(null);
-                            }}
-                          >
-                            Transferir
+                          <Button size="sm" variant="ghost" icon={<Repeat className="size-4" />} onClick={(e) => { e.stopPropagation(); void moveFrom(b); }}>
+                            Movimentar
                           </Button>
                         ),
                       },
@@ -350,8 +382,11 @@ export function CategoryBalancesPage() {
       <MovementModal
         open={movement.open}
         onClose={() => setMovement({ open: false })}
-        initialKind={movement.from ? "transfer" : "entry"}
+        initialKind={movement.kind ?? "entry"}
         fromBalance={movement.from}
+        itemId={movement.itemId}
+        facilityId={movement.facilityId}
+        departamentId={movement.departamentId}
       />
     </>
   );
