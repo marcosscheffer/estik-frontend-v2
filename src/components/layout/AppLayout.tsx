@@ -13,11 +13,9 @@ import {
   Menu,
   Monitor,
   Network,
-  Package,
   Repeat,
   Settings,
   ShieldCheck,
-  Tags,
   Ticket,
   UserCircle,
   Users,
@@ -69,8 +67,7 @@ const groups: NavGroup[] = [
     items: [
       { to: "/stock/balances", label: "Saldos", icon: Boxes, need: access.stock },
       { to: "/stock/movements", label: "Movimentações", icon: Repeat, need: access.stock },
-      { to: "/items", label: "Itens", icon: Package, need: access.catalog },
-      { to: "/categories", label: "Categorias", icon: Tags, need: access.catalog },
+      // Itens e Categorias agora são criados/editados dentro de Saldos (as rotas /items e /categories continuam existindo)
     ],
   },
   {

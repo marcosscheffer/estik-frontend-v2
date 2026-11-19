@@ -17,6 +17,8 @@ interface Props {
   kind: "item" | "category";
   target: Target | null;
   onClose: () => void;
+  /** chamado depois de apagar (ex.: voltar para Saldos ao apagar a categoria aberta) */
+  onDeleted?: () => void;
 }
 
 /**
@@ -24,7 +26,7 @@ interface Props {
  * apagar uma categoria apaga os itens dela, e apagar um item apaga os saldos e o histórico de movimentações.
  * Por isso mostramos o que vai junto e o botão só libera depois de digitar o nome exato (sem colar).
  */
-export function DeleteCatalogDialog({ kind, target, onClose }: Props) {
+export function DeleteCatalogDialog({ kind, target, onClose, onDeleted }: Props) {
   const [typed, setTyped] = useState("");
   const open = !!target;
   const isCategory = kind === "category";
@@ -58,7 +60,10 @@ export function DeleteCatalogDialog({ kind, target, onClose }: Props) {
     mutationFn: () => (isCategory ? categoriesService.remove(target!.id) : itemsService.remove(target!.id)),
     invalidate: [["items"], ["categories"], ["lookup", "items"], ["lookup", "categories"], ["stock"]],
     success: isCategory ? "Categoria apagada" : "Item apagado",
-    onSuccess: onClose,
+    onSuccess: () => {
+      onClose();
+      onDeleted?.();
+    },
   });
 
   const matches = !!target && typed === target.name;

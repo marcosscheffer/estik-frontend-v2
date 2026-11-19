@@ -21,7 +21,7 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-function CategoryModal({ open, onClose, id }: { open: boolean; onClose: () => void; id?: string }) {
+export function CategoryModal({ open, onClose, id }: { open: boolean; onClose: () => void; id?: string }) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
   // A listagem só traz id/nome; a descrição vem do GET /categories/{id}.
   const detail = useQuery({

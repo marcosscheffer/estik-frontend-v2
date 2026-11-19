@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useLocation, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import clsx from "clsx";
-import { ArrowRightLeft, FilterX, PackageOpen, Plus } from "lucide-react";
+import { ArrowRightLeft, FilterX, PackageOpen, PackagePlus, Pencil, Plus, Trash2 } from "lucide-react";
 import { access } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFilters } from "@/hooks/useFilters";
@@ -16,6 +16,9 @@ import type { ItemSummaryResponse, StockBalanceSummaryResponse } from "@/types/a
 import { MovementModal } from "./MovementModal";
 import { MinimumTag } from "./BalanceCard";
 import { categoryState } from "./BalanceCategoriesPage";
+import { CategoryModal } from "@/pages/catalog/CategoriesPage";
+import { ItemModal } from "@/pages/catalog/ItemsPage";
+import { DeleteCatalogDialog } from "@/pages/catalog/DeleteCatalogDialog";
 
 /** Um item da categoria com a soma dos seus saldos (respeitando os filtros). */
 interface ItemTotal {
@@ -37,6 +40,12 @@ export function CategoryBalancesPage() {
   const nav = (useLocation().state ?? {}) as { minimum?: number | null; quantity?: number };
   const { can } = useAuth();
   const canWrite = can(access.stockWrite);
+  const canCatalog = can(access.catalogWrite);
+  const navigate = useNavigate();
+  // criar/editar item (com a categoria travada), editar/apagar a categoria
+  const [itemForm, setItemForm] = useState<{ id?: string } | null>(null);
+  const [editingCategory, setEditingCategory] = useState(false);
+  const [deleting, setDeleting] = useState<{ kind: "item" | "category"; id: string; name: string } | null>(null);
   const { filters, setFilter } = useFilters({ facilityId: "", departamentId: "" });
   const [, setParams] = useSearchParams();
   const [view, setView] = useViewMode("category-balances");
@@ -66,13 +75,15 @@ export function CategoryBalancesPage() {
     }),
   });
 
-  // se abriu pelo link direto (sem state), busca o mínimo no /by-category pelo nome
+  // mínimo da categoria vem do /by-category (buscando pelo nome)
   const summary = useQuery({
     queryKey: ["stock", "by-category", { name: category.data?.name, size: 100 }],
     queryFn: () => stockService.byCategory({ name: category.data!.name, size: 100 }),
-    enabled: !!category.data && nav.minimum === undefined,
+    enabled: !!category.data,
   });
-  const minimum = nav.minimum !== undefined ? nav.minimum : summary.data?.items.find((c) => c.id === categoryId)?.minimum;
+  // o valor do servidor ganha (muda quando edita a categoria aqui); o da navegação só cobre o carregamento
+  const fromServer = summary.data?.items.find((c) => c.id === categoryId);
+  const minimum = fromServer ? fromServer.minimum : nav.minimum;
 
   const rows: ItemTotal[] | undefined = useMemo(() => {
     if (!items.data) return undefined;
@@ -101,12 +112,29 @@ export function CategoryBalancesPage() {
     })),
   });
 
+  // editar/apagar o item direto no card ou na linha (sem abrir a janela de detalhes)
+  const itemActions = (r: ItemTotal) =>
+    canCatalog && (
+      <div className="flex shrink-0" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setItemForm({ id: r.item.id })} aria-label={`Editar ${r.item.name}`} title="Editar item" />
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={<Trash2 className="size-4" />}
+          onClick={() => setDeleting({ kind: "item", id: r.item.id, name: r.item.name })}
+          aria-label={`Apagar ${r.item.name}`}
+          title="Apagar item"
+        />
+      </div>
+    );
+
   const clearFilters = () => setParams(new URLSearchParams(), { replace: true });
   const empty = (
     <EmptyState
       icon={<PackageOpen className="size-5" />}
       title="Nenhum item nesta categoria"
-      message="Cadastre itens nesta categoria no catálogo para eles aparecerem aqui."
+      message="Crie o primeiro item desta categoria (ex.: Fonte Bluecase)."
+      action={canCatalog ? <Button size="sm" icon={<PackagePlus className="size-4" />} onClick={() => setItemForm({})}>Novo item</Button> : undefined}
     />
   );
 
@@ -116,6 +144,25 @@ export function CategoryBalancesPage() {
       <PageHeader
         back="/stock/balances"
         title={category.data?.name ?? "Categoria"}
+        titleActions={
+          canCatalog &&
+          category.data && (
+            <>
+              <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditingCategory(true)}>
+                Editar categoria
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-red-400 hover:text-red-300"
+                icon={<Trash2 className="size-4" />}
+                onClick={() => setDeleting({ kind: "category", id: category.data!.id, name: category.data!.name })}
+              >
+                Apagar
+              </Button>
+            </>
+          )
+        }
         description={
           loadingTotals || !rows
             ? "Carregando saldos..."
@@ -124,6 +171,13 @@ export function CategoryBalancesPage() {
         actions={
           <>
             <ViewToggle value={view} onChange={setView} />
+            {canCatalog && category.data && (
+              <>
+                <Button variant="secondary" icon={<PackagePlus className="size-4" />} onClick={() => setItemForm({})}>
+                  Novo item
+                </Button>
+              </>
+            )}
             {canWrite && (
               <Button icon={<Plus className="size-4" />} onClick={() => setMovement({ open: true })}>
                 Nova movimentação
@@ -164,9 +218,12 @@ export function CategoryBalancesPage() {
             empty={empty}
             renderCard={(r) => (
               <Tile onClick={() => setSelected(r)}>
-                <div className="min-w-0">
-                  <h3 className="truncate font-medium text-slate-100">{r.item.name}</h3>
-                  <p className="mt-0.5 font-mono text-xs text-slate-500">SKU {r.item.sku}</p>
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-medium text-slate-100">{r.item.name}</h3>
+                    <p className="mt-0.5 font-mono text-xs text-slate-500">SKU {r.item.sku}</p>
+                  </div>
+                  {itemActions(r)}
                 </div>
                 <div className="mt-auto flex items-end justify-between gap-3">
                   <span className="text-xs text-slate-400">
@@ -195,6 +252,7 @@ export function CategoryBalancesPage() {
               { header: "Item", cell: (r) => <span className="font-medium text-slate-100">{r.item.name}</span> },
               { header: "SKU", cell: (r) => <span className="font-mono text-xs">{r.item.sku}</span> },
               { header: "Quantidade", className: "text-right", cell: (r) => <span className="font-semibold tabular-nums">{r.loading ? "…" : formatNumber(r.quantity)}</span> },
+              ...(canCatalog ? [{ header: "", className: "w-px text-right", cell: (r: ItemTotal) => itemActions(r) }] : []),
             ]}
           />
         )}
@@ -205,6 +263,34 @@ export function CategoryBalancesPage() {
         onClose={() => setSelected(null)}
         title={selected?.item.name ?? ""}
         description={selected ? `${formatNumber(selected.quantity)} em estoque · onde está guardado` : undefined}
+        footer={
+          canCatalog &&
+          selected && (
+            <>
+              <Button
+                variant="ghost"
+                className="text-red-400 hover:text-red-300"
+                icon={<Trash2 className="size-4" />}
+                onClick={() => {
+                  setDeleting({ kind: "item", id: selected.item.id, name: selected.item.name });
+                  setSelected(null);
+                }}
+              >
+                Apagar item
+              </Button>
+              <Button
+                variant="secondary"
+                icon={<Pencil className="size-4" />}
+                onClick={() => {
+                  setItemForm({ id: selected.item.id });
+                  setSelected(null);
+                }}
+              >
+                Editar item
+              </Button>
+            </>
+          )
+        }
       >
         {selected && selected.balances.length === 0 ? (
           <p className="py-4 text-center text-sm text-slate-400">Nenhum saldo deste item{hasFilters ? " com esses filtros" : ""}.</p>
@@ -246,6 +332,20 @@ export function CategoryBalancesPage() {
           </div>
         )}
       </Modal>
+
+      <ItemModal
+        open={!!itemForm}
+        onClose={() => setItemForm(null)}
+        id={itemForm?.id}
+        category={category.data ? { id: category.data.id, name: category.data.name } : undefined}
+      />
+      <CategoryModal open={editingCategory} onClose={() => setEditingCategory(false)} id={categoryId} />
+      <DeleteCatalogDialog
+        kind={deleting?.kind ?? "item"}
+        target={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={() => deleting?.kind === "category" && navigate("/stock/balances", { replace: true })}
+      />
 
       <MovementModal
         open={movement.open}

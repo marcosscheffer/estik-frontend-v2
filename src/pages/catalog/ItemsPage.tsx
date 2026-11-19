@@ -22,7 +22,21 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-function ItemModal({ open, onClose, id }: { open: boolean; onClose: () => void; id?: string }) {
+/**
+ * Formulário de item. Com `category`, a categoria vem preenchida e travada
+ * (usado dentro de Saldos > categoria).
+ */
+export function ItemModal({
+  open,
+  onClose,
+  id,
+  category,
+}: {
+  open: boolean;
+  onClose: () => void;
+  id?: string;
+  category?: { id: string; name: string };
+}) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({ resolver: zodResolver(schema) });
   const detail = useQuery({
     queryKey: ["items", "detail", id],
@@ -37,13 +51,13 @@ function ItemModal({ open, onClose, id }: { open: boolean; onClose: () => void; 
       name: d?.name ?? "",
       sku: d?.sku ?? "",
       description: d?.description ?? "",
-      categoryId: d?.categoryId ?? "",
+      categoryId: category?.id ?? d?.categoryId ?? "",
     });
-  }, [open, detail.data, reset]);
+  }, [open, detail.data, category?.id, reset]);
 
   const save = useApiMutation({
     mutationFn: (d: FormData) => (id ? itemsService.update(id, d) : itemsService.create(d)),
-    invalidate: [["items"], ["lookup", "items"]],
+    invalidate: [["items"], ["lookup", "items"], ["stock"]],
     success: id ? "Item atualizado" : "Item criado",
     onSuccess: onClose,
   });
@@ -55,7 +69,12 @@ function ItemModal({ open, onClose, id }: { open: boolean; onClose: () => void; 
         <Input label="Nome" {...register("name")} error={errors.name?.message} />
         <Input label="SKU" placeholder="MOUSE-USB-01" {...register("sku")} error={errors.sku?.message} />
         <Textarea label="Descrição" rows={3} className="sm:col-span-2" {...register("description")} error={errors.description?.message} />
-        <CategorySelect label="Categoria" {...register("categoryId")} error={errors.categoryId?.message} />
+        {category ? (
+          // travado: o valor vai no formulário pelo reset(), aqui só mostra o nome
+          <Input label="Categoria" value={category.name} readOnly disabled />
+        ) : (
+          <CategorySelect label="Categoria" {...register("categoryId")} error={errors.categoryId?.message} />
+        )}
       </form>
     </Modal>
   );

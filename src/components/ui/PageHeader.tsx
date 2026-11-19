@@ -8,9 +8,11 @@ interface PageHeaderProps {
   description?: string;
   actions?: React.ReactNode;
   back?: string;
+  /** ações ligadas ao próprio título (ex.: editar/apagar o registro da página), mostradas ao lado dele */
+  titleActions?: React.ReactNode;
 }
 
-export function PageHeader({ title, description, actions, back }: PageHeaderProps) {
+export function PageHeader({ title, description, actions, back, titleActions }: PageHeaderProps) {
   const { pathname } = useLocation();
   const accent = accentFor(pathname);
   return (
@@ -26,7 +28,10 @@ export function PageHeader({ title, description, actions, back }: PageHeaderProp
             <ChevronLeft className="size-4" /> Voltar
           </Link>
         )}
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-100">{title}</h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-100">{title}</h1>
+          {titleActions && <div className="flex items-center gap-1">{titleActions}</div>}
+        </div>
         {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}

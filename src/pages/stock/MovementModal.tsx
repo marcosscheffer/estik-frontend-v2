@@ -44,12 +44,13 @@ interface SimpleFormProps {
   onDone: () => void;
   facilityId?: string;
   departamentId?: string;
+  itemId?: string;
 }
 
-function SimpleForm({ kind, onDone, facilityId: initialFacility = "", departamentId: initialDepartament = "" }: SimpleFormProps) {
+function SimpleForm({ kind, onDone, facilityId: initialFacility = "", departamentId: initialDepartament = "", itemId: initialItem = "" }: SimpleFormProps) {
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<SimpleData>({
     resolver: zodResolver(simpleSchema),
-    defaultValues: { facilityId: initialFacility, departamentId: initialDepartament, itemId: "", description: "" },
+    defaultValues: { facilityId: initialFacility, departamentId: initialDepartament, itemId: initialItem, description: "" },
   });
   const facilityId = watch("facilityId");
 
@@ -143,9 +144,11 @@ interface Props {
   /** Unidade/departamento já preenchidos em entrada, saída e ajuste. */
   facilityId?: string;
   departamentId?: string;
+  /** Item já preenchido em entrada, saída e ajuste. */
+  itemId?: string;
 }
 
-export function MovementModal({ open, onClose, initialKind = "entry", fromBalance, facilityId, departamentId }: Props) {
+export function MovementModal({ open, onClose, initialKind = "entry", fromBalance, facilityId, departamentId, itemId }: Props) {
   const [kind, setKind] = useState<MovementKind>(initialKind);
   useEffect(() => {
     if (open) setKind(initialKind);
@@ -173,7 +176,7 @@ export function MovementModal({ open, onClose, initialKind = "entry", fromBalanc
       {kind === "transfer" ? (
         <TransferForm key="transfer" onDone={onClose} fromBalance={fromBalance} />
       ) : (
-        <SimpleForm key={kind} kind={kind} onDone={onClose} facilityId={facilityId} departamentId={departamentId} />
+        <SimpleForm key={kind} kind={kind} onDone={onClose} facilityId={facilityId} departamentId={departamentId} itemId={itemId} />
       )}
     </Modal>
   );

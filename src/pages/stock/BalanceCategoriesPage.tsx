@@ -2,7 +2,7 @@ import { useState } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
-import { FolderOpen, List, Plus, SearchX, Tags } from "lucide-react";
+import { FolderOpen, FolderPlus, List, Plus, SearchX, Tags } from "lucide-react";
 import { access } from "@/lib/permissions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFilters } from "@/hooks/useFilters";
@@ -12,6 +12,7 @@ import { formatNumber } from "@/lib/format";
 import { Button, Card, CardGrid, EmptyState, ErrorState, PageHeader, Pagination, SearchInput, Table, Tile, TileIcon, ViewToggle } from "@/components/ui";
 import type { StockCategoryResponse } from "@/types/api";
 import { MovementModal } from "./MovementModal";
+import { CategoryModal } from "@/pages/catalog/CategoriesPage";
 import { MinimumTag } from "./BalanceCard";
 import type { MinimumState } from "@/lib/stock";
 
@@ -31,6 +32,8 @@ export function categoryState(c: { quantity: number | null; minimum?: number | n
 export function BalanceCategoriesPage() {
   const { can } = useAuth();
   const canWrite = can(access.stockWrite);
+  const canCatalog = can(access.catalogWrite);
+  const [creatingCategory, setCreatingCategory] = useState(false);
   const navigate = useNavigate();
   const { filters, page, setFilter, setPage } = useFilters({ name: "" });
   const [view, setView] = useViewMode("balance-categories");
@@ -56,7 +59,8 @@ export function BalanceCategoriesPage() {
     <EmptyState
       icon={<Tags className="size-5" />}
       title="Nenhuma categoria ainda"
-      message="Cadastre categorias e itens no catálogo. O total de cada categoria aparece aqui depois da primeira entrada."
+      message="Crie a primeira categoria (ex.: Fonte de computador) e depois os itens dentro dela."
+      action={canCatalog ? <Button size="sm" icon={<FolderPlus className="size-4" />} onClick={() => setCreatingCategory(true)}>Nova categoria</Button> : undefined}
     />
   );
 
@@ -71,6 +75,11 @@ export function BalanceCategoriesPage() {
             <Button variant="secondary" icon={<List className="size-4" />} onClick={() => navigate("/stock/balances/all")}>
               Todos os saldos
             </Button>
+            {canCatalog && (
+              <Button variant="secondary" icon={<FolderPlus className="size-4" />} onClick={() => setCreatingCategory(true)}>
+                Nova categoria
+              </Button>
+            )}
             {canWrite && (
               <Button icon={<Plus className="size-4" />} onClick={() => setMovementOpen(true)}>
                 Nova movimentação
@@ -152,6 +161,7 @@ export function BalanceCategoriesPage() {
         {data && <Pagination page={page} totalPages={data.totalPages} totalItems={data.totalItems} onChange={setPage} />}
       </Card>
 
+      <CategoryModal open={creatingCategory} onClose={() => setCreatingCategory(false)} />
       <MovementModal open={movementOpen} onClose={() => setMovementOpen(false)} initialKind="entry" />
     </>
   );
